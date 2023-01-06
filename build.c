@@ -77,11 +77,19 @@ main() {
                 prb_STR("clang/Basic/DiagnosticDriverKinds.inc"),
                 prb_STR("clang/StaticAnalyzer/Checkers/Checkers.inc"),
                 prb_STR("clang/Basic/DiagnosticCommonKinds.inc"),
+                prb_STR("clang/AST/StmtNodes.inc"),
+                prb_STR("clang/AST/DeclNodes.inc"),
+                prb_STR("clang/AST/TypeNodes.inc"),
+                prb_STR("clang/Basic/AttrList.inc"),
+                prb_STR("llvm/Frontend/OpenMP/OMP.inc"),
+                prb_STR("clang/include/clang/AST/CommentCommandList.inc"),
+                prb_STR("clang/AST/CommentCommandList.inc"),
             };
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
             if (newpathIndex == -1) {
                 shput(newpaths, newpath.ptr, ogpath);
                 prb_TempMemory temp = prb_beginTempMemory(tempArena);
+                prb_Str ogpathDir = prb_getParentDir(tempArena, ogpath);
 
                 // NOTE(khvorov) Copy file
                 prb_ReadEntireFileResult clangSrcFileReadRes = prb_readEntireFile(tempArena, ogpath);
@@ -95,8 +103,13 @@ main() {
                     prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
                     prb_Str includedFile = scanner.betweenLastMatches;
                     if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
-                        // TODO(khvorov) If doesn't start with clang/llvm then it's next to the parent?
-                        arrput(clangRelevantFiles, prb_fmt(permArena, "%.*s", prb_LIT(includedFile)));
+                        prb_Str relevantPath = includedFile;
+                        if (!prb_strStartsWith(includedFile, prb_STR("clang")) && !prb_strStartsWith(includedFile, prb_STR("llvm"))) {
+                            prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/include/")});
+                            prb_assert(includeFindRes.found);
+                            relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
+                        }
+                        arrput(clangRelevantFiles, prb_fmt(permArena, "%.*s", prb_LIT(relevantPath)));
                     }
                 }
 
