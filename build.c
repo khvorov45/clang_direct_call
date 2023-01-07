@@ -32,6 +32,98 @@ replaceSeps(prb_Arena* arena, prb_Str str) {
     return newname;
 }
 
+function prb_Str
+compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCount) {
+    prb_Arena      objListArena = prb_createArenaFromArena(arena, 1 * prb_MEGABYTE);
+    prb_GrowingStr objListBuilder = prb_beginStr(&objListArena);
+
+    prb_Process* objProcs = 0;
+    for (i32 srcIndex = 0; srcIndex < srcFileCount; srcIndex++) {
+        prb_Str path = srcFiles[srcIndex];
+        prb_assert(prb_strEndsWith(path, prb_STR(".cpp")));
+        prb_Str filename = prb_getLastEntryInPath(path);
+        prb_Str outname = prb_replaceExt(arena, filename, prb_STR("obj"));
+        prb_Str out = prb_pathJoin(arena, outdir, outname);
+        prb_addStrSegment(&objListBuilder, " %.*s", prb_LIT(out));
+        prb_Str defines = prb_STR(
+            "-DLLVM_ON_UNIX -DPACKAGE_NAME=\"LLVM\" -DPACKAGE_VERSION=\"420.69\" "
+            "-DHAVE_FCNTL_H=1 -DHAVE_UNISTD_H=1 -DLLVM_ENABLE_THREADS=1 -DHAVE_SYSEXITS_H=1 "
+            "-DHAVE_SYS_STAT_H=1 -DLLVM_WINDOWS_PREFER_FORWARD_SLASH=1 -DHAVE_SYS_MMAN_H=1 "
+            "-DHAVE_FUTIMENS=1 -DLLVM_ENABLE_CRASH_DUMPS=1 -DHAVE_GETRUSAGE=1 -DHAVE_SYS_RESOURCE_H=1 "
+            "-DHAVE_GETPAGESIZE=1 -DHAVE_MALLINFO2=1 -DHAVE_PTHREAD_H -DHAVE_ERRNO_H -DHAVE_STRERROR_R "
+            "-DBUG_REPORT_URL=\"hawtdawgadverntures.xyz\""
+        );
+        prb_Str cmd = prb_fmt(arena, "clang -g %.*s -Werror -Wfatal-errors -std=c++17 -c %.*s -o %.*s", prb_LIT(defines), prb_LIT(path), prb_LIT(out));
+        prb_writelnToStdout(arena, cmd);
+        prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
+        prb_assert(prb_launchProcesses(arena, &proc, 1, prb_Background_Yes));
+        arrput(objProcs, proc);
+    }
+    prb_assert(prb_waitForProcesses(objProcs, arrlen(objProcs)));
+
+    prb_Str objList = prb_endStr(&objListBuilder);
+    return objList;
+}
+
+function void
+execCmd(prb_Arena* arena, prb_Str cmd) {
+    prb_writelnToStdout(arena, cmd);
+    prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
+    prb_assert(prb_launchProcesses(arena, &proc, 1, prb_Background_No));
+}
+
+function void
+addAllCppFiles(prb_Arena* arena, prb_Str** storage, prb_Str dir) {
+    prb_Str* allEntries = prb_getAllDirEntries(arena, dir, prb_Recursive_No);
+    for (i32 ind = 0; ind < arrlen(allEntries); ind++) {
+        prb_Str entry = allEntries[ind];
+        if (prb_strEndsWith(entry, prb_STR(".cpp"))) {
+            arrput(*storage, entry);
+        }
+    }
+}
+
+function prb_Str
+compileObjsThatStartWith(prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc, prb_Str startsWith) {
+    prb_Str outdir = prb_pathJoin(arena, builddir, startsWith);
+    prb_assert(prb_clearDir(arena, outdir));
+
+    prb_Str* files = 0;
+    for (i32 srcIndex = 0; srcIndex < arrlen(allFilesInSrc); srcIndex++) {
+        prb_Str path = allFilesInSrc[srcIndex];
+        prb_Str name = prb_getLastEntryInPath(path);
+        if (prb_strEndsWith(name, prb_STR(".cpp")) && prb_strStartsWith(name, startsWith)) {
+            arrput(files, path);
+        }
+    }
+
+    prb_assert(arrlen(files) > 0);
+
+    prb_Str objs = compileObjs(arena, outdir, files, arrlen(files));
+    return objs;
+}
+
+typedef enum Skip {
+    Skip_No,
+    Skip_Yes,
+} Skip;
+
+function prb_Str
+compileStaticLib(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc, prb_Str startsWith) {
+    prb_Str outfile = prb_pathJoin(arena, builddir, prb_fmt(arena, "%.*s.lib", prb_LIT(startsWith)));
+
+    if (skip == Skip_No) {
+        prb_assert(prb_removePathIfExists(arena, outfile));
+        prb_TempMemory temp = prb_beginTempMemory(arena);
+        prb_Str objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
+        prb_Str libCmd = prb_fmt(arena, "ar rcs %.*s %.*s", prb_LIT(outfile), prb_LIT(objs));
+        execCmd(arena, libCmd);
+        prb_endTempMemory(temp);
+    }
+
+    return outfile;
+}
+
 int
 main() {
     prb_Arena  arena_ = prb_createArenaFromVmem(1 * prb_GIGABYTE);
@@ -44,33 +136,16 @@ main() {
     prb_Str clangdcdir = prb_pathJoin(permArena, rootdir, prb_STR("clang_src"));
     prb_Str builddir = prb_pathJoin(permArena, rootdir, prb_STR("build"));
 
-    prb_clearDir(tempArena, builddir);
+    prb_createDirIfNotExists(tempArena, builddir);
     prb_clearDir(tempArena, clangdcdir);
 
     prb_Str* clangRelevantFiles = 0;
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/utils/TableGen/TableGen.cpp")));
     arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/tools/driver/driver.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/CommandLine.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Error.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/raw_ostream.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/SmallVector.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/ErrorHandling.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Debug.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/circular_raw_ostream.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/ManagedStatic.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/StringRef.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Hashing.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/APFloat.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/APInt.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Signals.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/FormatVariadic.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/NativeFormatting.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Path.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Twine.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Process.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/CrashRecoveryContext.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/ThreadLocal.cpp")));
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support/Threading.cpp")));
+
+    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support")));
+    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/TableGen")));
+    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/lib/Support")));
+    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
     prb_Str*       newClangCppFiles = 0;
@@ -79,7 +154,6 @@ main() {
     for (i32 clangSrcFileIndex = 0; clangSrcFileIndex < arrlen(clangRelevantFiles); clangSrcFileIndex++) {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
         prb_Str        ogpath = clangRelevantFiles[clangSrcFileIndex];
-        prb_writelnToStdout(tempArena, ogpath);
 
         bool isCpp = prb_strEndsWith(ogpath, prb_STR(".cpp"));
 
@@ -125,32 +199,46 @@ main() {
 
                 // NOTE(khvorov) Scan for includes
                 prb_ReadEntireFileResult clangSrcFileReadRes = prb_readEntireFile(tempArena, ogpath);
-                prb_assert(clangSrcFileReadRes.success);
+                if (!clangSrcFileReadRes.success) {
+                    prb_writelnToStdout(tempArena, ogpath);
+                    prb_assert(!"couldn't read the file");
+                }
                 prb_Str        clangSrcFileStr = prb_strFromBytes(clangSrcFileReadRes.content);
                 prb_StrScanner scanner = prb_createStrScanner(clangSrcFileStr);
                 prb_Arena      newContentArena = prb_createArenaFromArena(tempArena, clangSrcFileStr.len * 2);
                 prb_GrowingStr newContentBuilder = prb_beginStr(&newContentArena);
                 while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#include \"")}, prb_StrScannerSide_AfterMatch)) {
-                    prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
-                    prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
-                    prb_Str includedFile = scanner.betweenLastMatches;
-
-                    prb_Str relevantPath = includedFile;
-                    if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
-                        relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
-                    } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
-                        relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/include"), includedFile);
-                    } else {
-                        prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
-                        prb_assert(includeFindRes.found);
-                        relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
+                    bool includeIsOnLineStart = scanner.beforeMatch.len == 0;
+                    if (scanner.beforeMatch.len > 0) {
+                        char lastCh = scanner.beforeMatch.ptr[scanner.beforeMatch.len - 1];
+                        includeIsOnLineStart = lastCh == '\n' || lastCh == '\r';
                     }
 
-                    prb_Str includedFileFlattened = replaceSeps(tempArena, relevantPath);
-                    prb_addStrSegment(&newContentBuilder, "#include \"%.*s\"", prb_LIT(includedFileFlattened));
+                    if (includeIsOnLineStart) {
+                        prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
+                        prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
+                        prb_Str includedFile = scanner.betweenLastMatches;
 
-                    if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
-                        arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, relevantPath));
+                        prb_Str relevantPath = includedFile;
+                        if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
+                            relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
+                        } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
+                            relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/include"), includedFile);
+                        } else {
+                            prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
+                            prb_assert(includeFindRes.found);
+                            relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
+                        }
+
+                        prb_Str includedFileFlattened = replaceSeps(tempArena, relevantPath);
+                        prb_addStrSegment(&newContentBuilder, "#include \"%.*s\"", prb_LIT(includedFileFlattened));
+
+                        if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
+                            if (prb_strEndsWith(relevantPath, prb_STR("Lex/x"))) {
+                                prb_debugbreak();
+                            }
+                            arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, relevantPath));
+                        }
                     }
                 }
                 prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.afterMatch));
@@ -202,73 +290,23 @@ main() {
         prb_endTempMemory(temp);
     }
 
-    // TODO(khvorov) Compile just the table gen
-    prb_Str tableGenSrc[] = {
-        prb_pathJoin(permArena, clangdcdir, prb_STR("clang_utils_TableGen_TableGen.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_CommandLine.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Error.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_raw_ostream.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_SmallVector.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_ErrorHandling.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Debug.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_circular_raw_ostream.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_ManagedStatic.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_StringRef.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Hashing.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_APFloat.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_APInt.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Signals.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_FormatVariadic.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_NativeFormatting.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Path.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Twine.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Process.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_CrashRecoveryContext.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_ThreadLocal.cpp")),
-        prb_pathJoin(permArena, clangdcdir, prb_STR("llvm_lib_Support_Threading.cpp")),
-    };
-    prb_Str tableGenDir = prb_pathJoin(permArena, builddir, prb_STR("tablegen"));
-    prb_clearDir(tempArena, tableGenDir);
-    prb_Str* tableGenObjs = 0;
-    for (i32 srcIndex = 0; srcIndex < prb_arrayCount(tableGenSrc); srcIndex++) {
+    prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
+
+    prb_Str supportLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
+    prb_Str tableGenLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TableGen"));
+    prb_Str clangSupportLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("clang_lib_Support"));
+
+    // NOTE(khvorov) Compile just the table gen
+    prb_Str tableGenExe = prb_pathJoin(permArena, builddir, prb_STR("clang_utils_TableGen.exe"));
+    {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        path = tableGenSrc[srcIndex];
-        prb_assert(prb_strEndsWith(path, prb_STR(".cpp")));
-        prb_Str filename = prb_getLastEntryInPath(path);
-        prb_Str outname = prb_replaceExt(tempArena, filename, prb_STR("obj"));
-        prb_Str out = prb_pathJoin(permArena, tableGenDir, outname);
-        arrput(tableGenObjs, out);
-        prb_Str defines = prb_STR(
-            "-DLLVM_ON_UNIX -DPACKAGE_NAME=\"LLVM\" -DPACKAGE_VERSION=\"420.69\" "
-            "-DHAVE_FCNTL_H=1 -DHAVE_UNISTD_H=1 -DLLVM_ENABLE_THREADS=1 -DHAVE_SYSEXITS_H=1 "
-            "-DHAVE_SYS_STAT_H=1 -DLLVM_WINDOWS_PREFER_FORWARD_SLASH=1 -DHAVE_SYS_MMAN_H=1 "
-            "-DHAVE_FUTIMENS=1 -DLLVM_ENABLE_CRASH_DUMPS=1 -DHAVE_GETRUSAGE=1 -DHAVE_SYS_RESOURCE_H=1 "
-            "-DHAVE_GETPAGESIZE=1 -DHAVE_MALLINFO2=1 -DHAVE_PTHREAD_H"
-        );
-        prb_Str cmd = prb_fmt(tempArena, "clang %.*s -Werror -Wfatal-errors -std=c++17 -c %.*s -o %.*s", prb_LIT(defines), prb_LIT(path), prb_LIT(out));
-        prb_writelnToStdout(tempArena, cmd);
-        prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
-        prb_assert(prb_launchProcesses(tempArena, &proc, 1, prb_Background_No));
+        prb_Str        objs = compileObjsThatStartWith(tempArena, builddir, allFilesInSrc, prb_STR("clang_utils_TableGen"));
+        prb_Str        linkCmd = prb_fmt(tempArena, "clang -o %.*s %.*s %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(tableGenExe), prb_LIT(objs), prb_LIT(tableGenLibFile), prb_LIT(clangSupportLibFile), prb_LIT(supportLibFile));
+        execCmd(tempArena, linkCmd);
         prb_endTempMemory(temp);
     }
 
-    // TODO(khvorov) Link table gen
-    prb_Str tableGenExe = prb_pathJoin(permArena, tableGenDir, prb_STR("tablegen.exe"));
-    {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_GrowingStr linkCmdBuilder = prb_beginStr(tempArena);
-        prb_addStrSegment(&linkCmdBuilder, "clang");
-        for (i32 objIndex = 0; objIndex < arrlen(tableGenObjs); objIndex++) {
-            prb_Str obj = tableGenObjs[objIndex];
-            prb_addStrSegment(&linkCmdBuilder, " %.*s", prb_LIT(obj));
-        }
-        prb_addStrSegment(&linkCmdBuilder, " -o %.*s -lstdc++ -lm", prb_LIT(tableGenExe));
-        prb_Str cmd = prb_endStr(&linkCmdBuilder);
-        prb_writelnToStdout(tempArena, cmd);
-        prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
-        prb_assert(prb_launchProcesses(tempArena, &proc, 1, prb_Background_No));
-        prb_endTempMemory(temp);
-    }
+    prb_debugbreak();
 
     // TODO(khvorov) Generate the files we need table gen for
     {
