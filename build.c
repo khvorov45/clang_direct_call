@@ -127,7 +127,7 @@ function prb_Str
 compileStaticLib(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc, prb_Str startsWith) {
     prb_Str outfile = prb_pathJoin(arena, builddir, prb_fmt(arena, "%.*s.lib", prb_LIT(startsWith)));
 
-    if (skip == Skip_No) {
+    if (skip == Skip_No || !prb_isFile(arena, outfile)) {
         prb_assert(prb_removePathIfExists(arena, outfile));
         prb_TempMemory temp = prb_beginTempMemory(arena);
         prb_Str        objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
@@ -143,7 +143,7 @@ function prb_Str
 compileExe(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc, prb_Str startsWith, prb_Str deps) {
     prb_Str outfile = prb_pathJoin(arena, builddir, prb_fmt(arena, "%.*s.exe", prb_LIT(startsWith)));
 
-    if (skip == Skip_No) {
+    if (skip == Skip_No || !prb_isFile(arena, outfile)) {
         prb_assert(prb_removePathIfExists(arena, outfile));
         prb_TempMemory temp = prb_beginTempMemory(arena);
         prb_Str        objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
@@ -155,8 +155,28 @@ compileExe(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc
     return outfile;
 }
 
+typedef struct RunTableGenSpec {
+    prb_Str    tableGenExe;
+    prb_Str    llvmRootDir;
+    prb_Str    clangdcdir;
+    prb_Str    in;
+    prb_Str    out;
+    prb_Str    includes;
+    prb_Str    args;
+} RunTableGenSpec;
+
 function void
-runTableGen(prb_Arena* arena, prb_Str tableGenExe, prb_Str llvmRootDir, prb_Str clangdcdir, prb_Str in, prb_Str out, prb_Str includes, prb_Str args) {
+runTableGen(prb_Arena* arena, void* data) {
+    RunTableGenSpec* spec = (RunTableGenSpec*)data;
+
+    prb_Str    tableGenExe = spec->tableGenExe;
+    prb_Str    llvmRootDir = spec->llvmRootDir;
+    prb_Str    clangdcdir = spec->clangdcdir;
+    prb_Str    in = spec->in;
+    prb_Str    out = spec->out;
+    prb_Str    includes = spec->includes;
+    prb_Str    args = spec->args;
+
     prb_TempMemory temp = prb_beginTempMemory(arena);
 
     prb_Str includePaths = {};
@@ -172,39 +192,47 @@ runTableGen(prb_Arena* arena, prb_Str tableGenExe, prb_Str llvmRootDir, prb_Str 
     prb_Str inpath = prb_pathJoin(arena, llvmRootDir, in);
     prb_Str outpath = prb_pathJoin(arena, clangdcdir, out);
 
-    prb_Str cmd = prb_fmt(
-        arena,
-        "%.*s %.*s %.*s %.*s -o %.*s",
-        prb_LIT(tableGenExe),
-        prb_LIT(args),
-        prb_LIT(includePaths),
-        prb_LIT(inpath),
-        prb_LIT(outpath)
-    );
+    if (!prb_isFile(arena, outpath)) {
+        prb_Str cmd = prb_fmt(
+            arena,
+            "%.*s %.*s %.*s %.*s -o %.*s",
+            prb_LIT(tableGenExe),
+            prb_LIT(args),
+            prb_LIT(includePaths),
+            prb_LIT(inpath),
+            prb_LIT(outpath)
+        );
 
-    execCmd(arena, cmd);
+        execCmd(arena, cmd);
 
-    // NOTE(khvorov) Flatten includes in the output
-    prb_ReadEntireFileResult outread = prb_readEntireFile(arena, outpath);
-    prb_assert(outread.success);
-    prb_Str outstr = prb_strFromBytes(outread.content);
+        // NOTE(khvorov) Flatten includes in the output
+        prb_ReadEntireFileResult outread = prb_readEntireFile(arena, outpath);
+        prb_assert(outread.success);
+        prb_Str outstr = prb_strFromBytes(outread.content);
 
-    prb_Arena      flatoutArena = prb_createArenaFromArena(arena, 10 * prb_MEGABYTE);
-    prb_GrowingStr flatoutBuilder = prb_beginStr(&flatoutArena);
-    prb_StrScanner scanner = prb_createStrScanner(outstr);
-    while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#include \"")}, prb_StrScannerSide_AfterMatch)) {
-        prb_addStrSegment(&flatoutBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
-        prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
-        prb_Str includedFile = scanner.betweenLastMatches;
-        prb_assert(prb_strStartsWith(includedFile, prb_STR("clang")));
-        prb_Str pathFromRoot = prb_pathJoin(arena, prb_STR("clang/include"), includedFile);
-        prb_Str flatpath = replaceSeps(arena, pathFromRoot);
-        prb_addStrSegment(&flatoutBuilder, "#include \"%.*s\"", prb_LIT(flatpath));
+        prb_Arena      flatoutArena = prb_createArenaFromArena(arena, 10 * prb_MEGABYTE);
+        prb_GrowingStr flatoutBuilder = prb_beginStr(&flatoutArena);
+        prb_StrScanner scanner = prb_createStrScanner(outstr);
+        while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#include \"")}, prb_StrScannerSide_AfterMatch)) {
+            prb_addStrSegment(&flatoutBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
+            prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
+            prb_Str includedFile = scanner.betweenLastMatches;
+            prb_Str pathFromRoot = {};
+            if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
+                pathFromRoot = prb_pathJoin(arena, prb_STR("clang/include"), includedFile);
+            } else {
+                prb_assert(prb_strStartsWith(includedFile, prb_STR("llvm")));
+                pathFromRoot = prb_pathJoin(arena, prb_STR("llvm/include"), includedFile);
+            }
+            prb_Str flatpath = replaceSeps(arena, pathFromRoot);
+            prb_addStrSegment(&flatoutBuilder, "#include \"%.*s\"", prb_LIT(flatpath));
+        }
+        prb_addStrSegment(&flatoutBuilder, "%.*s", prb_LIT(scanner.afterMatch));
+
+        prb_Str flatout = prb_endStr(&flatoutBuilder);
+        prb_assert(prb_writeEntireFile(arena, outpath, flatout.ptr, flatout.len));
     }
-    prb_addStrSegment(&flatoutBuilder, "%.*s", prb_LIT(scanner.afterMatch));
 
-    prb_Str flatout = prb_endStr(&flatoutBuilder);
-    prb_assert(prb_writeEntireFile(arena, outpath, flatout.ptr, flatout.len));
     prb_endTempMemory(temp);
 }
 
@@ -241,8 +269,18 @@ writeTargetDef(prb_Arena* arena, prb_Str llvmRootDir, prb_Str clangdcdir, prb_St
     prb_endTempMemory(temp);
 }
 
+typedef struct TableGenArgs {
+    prb_Str exe;
+    char*   in;
+    char*   out;
+    char*   include;
+    char*   args;
+} TableGenArgs;
+
 int
 main() {
+    prb_TimeStart scriptStart = prb_timeStart();
+
     prb_Arena  arena_ = prb_createArenaFromVmem(1 * prb_GIGABYTE);
     prb_Arena  permArena_ = prb_createArenaFromArena(&arena_, 100 * prb_MEGABYTE);
     prb_Arena* permArena = &permArena_;
@@ -441,6 +479,20 @@ main() {
         prb_endTempMemory(temp);
     }
 
+    {
+        prb_TempMemory temp = prb_beginTempMemory(tempArena);
+        prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_lib_Basic_VCSVersion.inc"));
+
+        prb_Str content = prb_STR(
+            "#define LLVM_REVISION \"\"\n"
+            "#define LLVM_REPOSITORY \"\"\n"
+            "#define CLANG_REVISION \"\"\n"
+            "#define CLANG_REPOSITORY \"\"\n"
+        );
+        prb_assert(prb_writeEntireFile(tempArena, outpath, content.ptr, content.len));
+        prb_endTempMemory(temp);
+    }
+
     writeTargetDef(
         tempArena,
         llvmRootDir,
@@ -495,142 +547,63 @@ main() {
     prb_Str clangTableGenExe = compileExe(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_utils_TableGen"), depsOfTablegen);
 
     // TODO(khvorov) Generate the files we need table gen for
-    runTableGen(
-        tempArena,
-        llvmTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Driver/Options.td"),
-        prb_STR("clang_include_clang_Driver_Options.inc"),
-        prb_STR("llvm/include"),
-        prb_STR("-gen-opt-parser-defs")
-    );
+    TableGenArgs tableGenArgs[] = {
+        {llvmTableGenExe, "clang/include/clang/Driver/Options.td", "clang_include_clang_Driver_Options.inc", "llvm/include", "-gen-opt-parser-defs"},
+        {llvmTableGenExe, "llvm/include/llvm/Frontend/OpenMP/OMP.td", "llvm_include_llvm_Frontend_OpenMP_OMP.h.inc", "llvm/include", "--gen-directive-decl"},
+        {llvmTableGenExe, "llvm/include/llvm/Frontend/OpenMP/OMP.td", "llvm_include_llvm_Frontend_OpenMP_OMP.inc", "llvm/include", "--gen-directive-impl"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticCommonKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Common"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticDriverKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Driver"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticFrontendKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Frontend"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticLexKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Lex"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticASTKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=AST"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticAnalysisKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Analysis"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticCommentKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Comment"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticCrossTUKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=CrossTU"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticParseKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Parse"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticSemaKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Sema"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticSerializationKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Serialization"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticRefactoringKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Refactoring"},
+        {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticGroups.inc", "clang/include/clang/Basic", "-gen-clang-diag-groups"},
+        {clangTableGenExe, "clang/include/clang/Basic/StmtNodes.td", "clang_include_clang_AST_StmtNodes.inc", "clang/include", "-gen-clang-stmt-nodes"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Basic_AttrList.inc", "clang/include", "-gen-clang-attr-list"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrList.inc", "clang/include", "-gen-clang-attr-parsed-attr-list"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Basic_AttrSubMatchRulesList.inc", "clang/include", "-gen-clang-attr-subject-match-rule-list"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Basic_AttrHasAttributeImpl.inc", "clang/include", "-gen-clang-attr-has-attribute-impl"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrKinds.inc", "clang/include", "-gen-clang-attr-parsed-attr-kinds"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrSpellingListIndex.inc", "clang/include", "-gen-clang-attr-spelling-index"},
+        {clangTableGenExe, "clang/include/clang/Basic/TypeNodes.td", "clang_include_clang_AST_TypeNodes.inc", "clang/include", "-gen-clang-type-nodes"},
+        {clangTableGenExe, "clang/include/clang/Basic/DeclNodes.td", "clang_include_clang_AST_DeclNodes.inc", "clang/include", "-gen-clang-decl-nodes"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandList.inc", "clang/include", "-gen-clang-comment-command-list"},
+        {clangTableGenExe, "clang/include/clang/StaticAnalyzer/Checkers/Checkers.td", "clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc", "clang/include/clang/StaticAnalyzer/Checkers", "-gen-clang-sa-checkers"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.h", "clang/include/clang/Basic", "-gen-arm-neon"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_fp16.td", "clang_include_clang_Basic_arm_fp16.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-def"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtins.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-def"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-sve-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtins.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
+    };
 
-    runTableGen(
-        tempArena,
-        llvmTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("llvm/include/llvm/Frontend/OpenMP/OMP.td"),
-        prb_STR("llvm_include_llvm_Frontend_OpenMP_OMP.inc"),
-        prb_STR("llvm/include"),
-        prb_STR("--gen-directive-impl")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/Diagnostic.td"),
-        prb_STR("clang_include_clang_Basic_DiagnosticCommonKinds.inc"),
-        prb_STR("clang/include/clang/Basic"),
-        prb_STR("-gen-clang-diags-defs -clang-component=Common")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/Diagnostic.td"),
-        prb_STR("clang_include_clang_Basic_DiagnosticDriverKinds.inc"),
-        prb_STR("clang/include/clang/Basic"),
-        prb_STR("-gen-clang-diags-defs -clang-component=Driver")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/StmtNodes.td"),
-        prb_STR("clang_include_clang_AST_StmtNodes.inc"),
-        prb_STR("clang/include"),
-        prb_STR("-gen-clang-stmt-nodes")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/Attr.td"),
-        prb_STR("clang_include_clang_Basic_AttrList.inc"),
-        prb_STR("clang/include"),
-        prb_STR("-gen-clang-attr-list")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/TypeNodes.td"),
-        prb_STR("clang_include_clang_AST_TypeNodes.inc"),
-        prb_STR("clang/include"),
-        prb_STR("-gen-clang-type-nodes")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/DeclNodes.td"),
-        prb_STR("clang_include_clang_AST_DeclNodes.inc"),
-        prb_STR("clang/include"),
-        prb_STR("-gen-clang-decl-nodes")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/AST/CommentCommands.td"),
-        prb_STR("clang_include_clang_AST_CommentCommandList.inc"),
-        prb_STR("clang/include"),
-        prb_STR("-gen-clang-comment-command-list")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/StaticAnalyzer/Checkers/Checkers.td"),
-        prb_STR("clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc"),
-        prb_STR("clang/include/clang/StaticAnalyzer/Checkers"),
-        prb_STR("-gen-clang-sa-checkers")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/arm_neon.td"),
-        prb_STR("clang_include_clang_Basic_arm_neon.inc"),
-        prb_STR("clang/include/clang/Basic"),
-        prb_STR("-gen-arm-neon-sema")
-    );
-
-    runTableGen(
-        tempArena,
-        clangTableGenExe,
-        llvmRootDir,
-        clangdcdir,
-        prb_STR("clang/include/clang/Basic/arm_neon.td"),
-        prb_STR("clang_include_clang_Basic_arm_neon.h"),
-        prb_STR("clang/include/clang/Basic"),
-        prb_STR("-gen-arm-neon")
-    );
+    {
+        prb_TempMemory   temp = prb_beginTempMemory(tempArena);
+        RunTableGenSpec* tableGenSpecs = prb_arenaAllocArray(tempArena, RunTableGenSpec, prb_arrayCount(tableGenArgs));
+        prb_Job*         jobs = 0;
+        for (i32 ind = 0; ind < prb_arrayCount(tableGenArgs); ind++) {
+            TableGenArgs    args = tableGenArgs[ind];
+            tableGenSpecs[ind] = (RunTableGenSpec) {args.exe, llvmRootDir, clangdcdir, prb_STR(args.in), prb_STR(args.out), prb_STR(args.include), prb_STR(args.args)};
+            prb_Job job = prb_createJob(runTableGen, tableGenSpecs + ind, tempArena, 20 * prb_MEGABYTE);
+            arrput(jobs, job);
+        }
+        prb_assert(prb_launchJobs(jobs, arrlen(jobs), prb_Background_Yes));
+        prb_assert(prb_waitForJobs(jobs, arrlen(jobs)));
+        prb_endTempMemory(temp);
+    }
 
     // TODO(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
-    prb_Str clangBasicLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
+    prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
     // prb_Str compilerDeps = prb_fmt(
     //     permArena,
@@ -641,4 +614,6 @@ main() {
     //     prb_LIT(supportLibFile)
     // );
     // compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
+
+    prb_writeToStdout(prb_fmt(tempArena, "total: %.2fms\n", prb_getMsFrom(scriptStart)));
 }
