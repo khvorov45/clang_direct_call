@@ -57,7 +57,7 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
             "-DHAVE_SYS_STAT_H=1 -DLLVM_WINDOWS_PREFER_FORWARD_SLASH=1 -DHAVE_SYS_MMAN_H=1 "
             "-DHAVE_FUTIMENS=1 -DLLVM_ENABLE_CRASH_DUMPS=1 -DHAVE_GETRUSAGE=1 -DHAVE_SYS_RESOURCE_H=1 "
             "-DHAVE_GETPAGESIZE=1 -DHAVE_MALLINFO2=1 -DHAVE_PTHREAD_H -DHAVE_ERRNO_H -DHAVE_STRERROR_R "
-            "-DBUG_REPORT_URL=\"hawtdawgadverntures.xyz\""
+            "-DBUG_REPORT_URL=\"hawtdawgadverntures.xyz\" -DCLANG_SPAWN_CC1=0"
         );
         prb_Str flags = prb_STR("-std=c++17");
         if (prb_strEndsWith(path, prb_STR(".c"))) {
@@ -179,6 +179,39 @@ runTableGen(prb_Arena* arena, prb_Str tableGenExe, prb_Str llvmRootDir, prb_Str 
     prb_endTempMemory(temp);
 }
 
+function void
+writeTargetDef(prb_Arena* arena, prb_Str llvmRootDir, prb_Str clangdcdir, prb_Str in, prb_Str out) {
+    prb_TempMemory temp = prb_beginTempMemory(arena);
+
+    prb_Str                  inpath = prb_pathJoin(arena, llvmRootDir, in);
+    prb_ReadEntireFileResult inread = prb_readEntireFile(arena, inpath);
+    prb_assert(inread.success);
+    prb_Str instr = prb_strFromBytes(inread.content);
+
+    prb_Str macro = {};
+    {
+        prb_StrScanner scanner = prb_createStrScanner(instr);
+        prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#ifndef")}, prb_StrScannerSide_AfterMatch));
+        prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.mode = prb_StrFindMode_LineBreak}, prb_StrScannerSide_AfterMatch));
+        macro = prb_strTrim(scanner.betweenLastMatches);
+    }
+
+    prb_StrFindSpec at = {.pattern = prb_STR("@")};
+
+    prb_GrowingStr    outBuilder = prb_beginStr(arena);
+    prb_StrFindResult placeholder = prb_strFind(instr, at);
+    prb_assert(placeholder.found);
+    prb_addStrSegment(&outBuilder, "%.*s", prb_LIT(placeholder.beforeMatch));
+    prb_addStrSegment(&outBuilder, "%.*s(X86)", prb_LIT(macro));
+    placeholder = prb_strFind(placeholder.afterMatch, at);
+    prb_assert(placeholder.found);
+    prb_addStrSegment(&outBuilder, "%.*s", prb_LIT(placeholder.afterMatch));
+    prb_Str outstr = prb_endStr(&outBuilder);
+    prb_Str outpath = prb_pathJoin(arena, clangdcdir, out);
+    prb_assert(prb_writeEntireFile(arena, outpath, outstr.ptr, outstr.len));
+    prb_endTempMemory(temp);
+}
+
 int
 main() {
     prb_Arena  arena_ = prb_createArenaFromVmem(1 * prb_GIGABYTE);
@@ -259,37 +292,27 @@ main() {
                 prb_Arena      newContentArena = prb_createArenaFromArena(tempArena, clangSrcFileStr.len * 2);
                 prb_GrowingStr newContentBuilder = prb_beginStr(&newContentArena);
                 while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#include \"")}, prb_StrScannerSide_AfterMatch)) {
-                    bool includeIsOnLineStart = scanner.beforeMatch.len == 0;
-                    if (scanner.beforeMatch.len > 0) {
-                        char lastCh = scanner.beforeMatch.ptr[scanner.beforeMatch.len - 1];
-                        includeIsOnLineStart = lastCh == '\n' || lastCh == '\r';
+                    prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
+
+                    prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
+                    prb_Str includedFile = scanner.betweenLastMatches;
+
+                    prb_Str relevantPath = includedFile;
+                    if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
+                        relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
+                    } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
+                        relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/include"), includedFile);
+                    } else if (!prb_streq(relevantPath, prb_STR("x.h"))) {
+                        prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
+                        prb_assert(includeFindRes.found);
+                        relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
                     }
 
-                    if (includeIsOnLineStart) {
-                        prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.betweenLastMatches));
-                        prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("\"")}, prb_StrScannerSide_AfterMatch));
-                        prb_Str includedFile = scanner.betweenLastMatches;
+                    prb_Str includedFileFlattened = replaceSeps(tempArena, relevantPath);
+                    prb_addStrSegment(&newContentBuilder, "#include \"%.*s\"", prb_LIT(includedFileFlattened));
 
-                        prb_Str relevantPath = includedFile;
-                        if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
-                            relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
-                        } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
-                            relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/include"), includedFile);
-                        } else {
-                            prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
-                            prb_assert(includeFindRes.found);
-                            relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
-                        }
-
-                        prb_Str includedFileFlattened = replaceSeps(tempArena, relevantPath);
-                        prb_addStrSegment(&newContentBuilder, "#include \"%.*s\"", prb_LIT(includedFileFlattened));
-
-                        if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
-                            if (prb_strEndsWith(relevantPath, prb_STR("Lex/x"))) {
-                                prb_debugbreak();
-                            }
-                            arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, relevantPath));
-                        }
+                    if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
+                        arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, relevantPath));
                     }
                 }
                 prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.afterMatch));
@@ -341,6 +364,46 @@ main() {
         prb_endTempMemory(temp);
     }
 
+    writeTargetDef(
+        tempArena,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Config/Targets.def.in"),
+        prb_STR("llvm_include_llvm_Config_Targets.def")
+    );
+
+    writeTargetDef(
+        tempArena,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Config/AsmPrinters.def.in"),
+        prb_STR("llvm_include_llvm_Config_AsmPrinters.def")
+    );
+
+    writeTargetDef(
+        tempArena,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Config/AsmParsers.def.in"),
+        prb_STR("llvm_include_llvm_Config_AsmParsers.def")
+    );
+
+    writeTargetDef(
+        tempArena,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Config/Disassemblers.def.in"),
+        prb_STR("llvm_include_llvm_Config_Disassemblers.def")
+    );
+
+    writeTargetDef(
+        tempArena,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Config/TargetMCAs.def.in"),
+        prb_STR("llvm_include_llvm_Config_TargetMCAs.def")
+    );
+
     prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
 
     // NOTE(khvorov) Static libs we need for tablegen
@@ -368,6 +431,17 @@ main() {
 
     runTableGen(
         tempArena,
+        llvmTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("llvm/include/llvm/Frontend/OpenMP/OMP.td"),
+        prb_STR("llvm_include_llvm_Frontend_OpenMP_OMP.inc"),
+        prb_STR("llvm/include"),
+        prb_STR("--gen-directive-impl")
+    );
+
+    runTableGen(
+        tempArena,
         clangTableGenExe,
         llvmRootDir,
         clangdcdir,
@@ -388,7 +462,72 @@ main() {
         prb_STR("-gen-clang-diags-defs -clang-component=Driver")
     );
 
-    prb_debugbreak();
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/StmtNodes.td"),
+        prb_STR("clang_include_clang_AST_StmtNodes.inc"),
+        prb_STR("clang/include"),
+        prb_STR("-gen-clang-stmt-nodes")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/Attr.td"),
+        prb_STR("clang_include_clang_Basic_AttrList.inc"),
+        prb_STR("clang/include"),
+        prb_STR("-gen-clang-attr-list")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/TypeNodes.td"),
+        prb_STR("clang_include_clang_AST_TypeNodes.inc"),
+        prb_STR("clang/include"),
+        prb_STR("-gen-clang-type-nodes")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/DeclNodes.td"),
+        prb_STR("clang_include_clang_AST_DeclNodes.inc"),
+        prb_STR("clang/include"),
+        prb_STR("-gen-clang-decl-nodes")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/AST/CommentCommands.td"),
+        prb_STR("clang_include_clang_AST_CommentCommandList.inc"),
+        prb_STR("clang/include"),
+        prb_STR("-gen-clang-comment-command-list")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/StaticAnalyzer/Checkers/Checkers.td"),
+        prb_STR("clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc"),
+        prb_STR("clang/include/clang/StaticAnalyzer/Checkers"),
+        prb_STR("-gen-clang-sa-checkers")
+    );
 
     // TODO(khvorov) Compile the actual compiler
+    compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), prb_STR(""));
 }
