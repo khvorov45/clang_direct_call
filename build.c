@@ -156,26 +156,26 @@ compileExe(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc
 }
 
 typedef struct RunTableGenSpec {
-    prb_Str    tableGenExe;
-    prb_Str    llvmRootDir;
-    prb_Str    clangdcdir;
-    prb_Str    in;
-    prb_Str    out;
-    prb_Str    includes;
-    prb_Str    args;
+    prb_Str tableGenExe;
+    prb_Str llvmRootDir;
+    prb_Str clangdcdir;
+    prb_Str in;
+    prb_Str out;
+    prb_Str includes;
+    prb_Str args;
 } RunTableGenSpec;
 
 function void
 runTableGen(prb_Arena* arena, void* data) {
     RunTableGenSpec* spec = (RunTableGenSpec*)data;
 
-    prb_Str    tableGenExe = spec->tableGenExe;
-    prb_Str    llvmRootDir = spec->llvmRootDir;
-    prb_Str    clangdcdir = spec->clangdcdir;
-    prb_Str    in = spec->in;
-    prb_Str    out = spec->out;
-    prb_Str    includes = spec->includes;
-    prb_Str    args = spec->args;
+    prb_Str tableGenExe = spec->tableGenExe;
+    prb_Str llvmRootDir = spec->llvmRootDir;
+    prb_Str clangdcdir = spec->clangdcdir;
+    prb_Str in = spec->in;
+    prb_Str out = spec->out;
+    prb_Str includes = spec->includes;
+    prb_Str args = spec->args;
 
     prb_TempMemory temp = prb_beginTempMemory(arena);
 
@@ -296,6 +296,7 @@ main() {
 
     prb_Str* clangRelevantFiles = 0;
     arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver/driver.cpp")));
+    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver/ToolChains/Clang.cpp")));
 
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TableGen")));
@@ -591,7 +592,7 @@ main() {
         RunTableGenSpec* tableGenSpecs = prb_arenaAllocArray(tempArena, RunTableGenSpec, prb_arrayCount(tableGenArgs));
         prb_Job*         jobs = 0;
         for (i32 ind = 0; ind < prb_arrayCount(tableGenArgs); ind++) {
-            TableGenArgs    args = tableGenArgs[ind];
+            TableGenArgs args = tableGenArgs[ind];
             tableGenSpecs[ind] = (RunTableGenSpec) {args.exe, llvmRootDir, clangdcdir, prb_STR(args.in), prb_STR(args.out), prb_STR(args.include), prb_STR(args.args)};
             prb_Job job = prb_createJob(runTableGen, tableGenSpecs + ind, tempArena, 20 * prb_MEGABYTE);
             arrput(jobs, job);
@@ -607,16 +608,36 @@ main() {
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
-    prb_Str compilerDeps = prb_fmt(
-        permArena,
-        "%.*s %.*s %.*s %.*s %.*s",
-        prb_LIT(clangDriverLibFile),
-        prb_LIT(clangBasicLibFile),
-        prb_LIT(targetParserLibFile),
-        prb_LIT(optionLibFile),
-        prb_LIT(supportLibFile)
-    );
-    compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
+    {
+        prb_TempMemory temp = prb_beginTempMemory(tempArena);
+
+        prb_Str srcFiles[] = {
+            prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_tools_driver_driver.cpp")),
+            prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_lib_Driver_ToolChains_Clang.cpp")),
+        };
+
+        prb_Str outdir = prb_pathJoin(tempArena, builddir, prb_STR("clang"));
+        prb_assert(prb_clearDir(tempArena, outdir));
+        prb_Str objs = compileObjs(tempArena, outdir, srcFiles, prb_arrayCount(srcFiles));
+
+        prb_Str out = prb_pathJoin(tempArena, builddir, prb_STR("clang.exe"));
+
+        prb_Str linkCmd = prb_fmt(
+            permArena,
+            "clang -o %.*s %.*s %.*s %.*s %.*s %.*s %.*s -lstdc++ -lm",
+            prb_LIT(out),
+            prb_LIT(objs),
+            prb_LIT(clangDriverLibFile),
+            prb_LIT(clangBasicLibFile),
+            prb_LIT(targetParserLibFile),
+            prb_LIT(optionLibFile),
+            prb_LIT(supportLibFile)
+        );
+
+        execCmd(tempArena, linkCmd);
+
+        prb_endTempMemory(temp);
+    }
 
     prb_writeToStdout(prb_fmt(tempArena, "total: %.2fms\n", prb_getMsFrom(scriptStart)));
 }
