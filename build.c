@@ -613,6 +613,17 @@ main() {
         prb_STR("clang/include/clang/Basic/arm_neon.td"),
         prb_STR("clang_include_clang_Basic_arm_neon.inc"),
         prb_STR("clang/include/clang/Basic"),
+        prb_STR("-gen-arm-neon-sema")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/arm_neon.td"),
+        prb_STR("clang_include_clang_Basic_arm_neon.h"),
+        prb_STR("clang/include/clang/Basic"),
         prb_STR("-gen-arm-neon")
     );
 
