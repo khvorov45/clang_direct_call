@@ -61,7 +61,7 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
             "-DCLANG_INSTALL_LIBDIR_BASENAME=\"\" -DENABLE_X86_RELAX_RELOCATIONS=1 -DDEFAULT_SYSROOT=\"\" "
             "-DCLANG_RESOURCE_DIR=\"\" -DPPC_LINUX_DEFAULT_IEEELONGDOUBLE=0 -DCLANG_DEFAULT_OPENMP_RUNTIME=\"libomp\" "
             "-DCLANG_DEFAULT_LINKER=\"\" -DLLVM_HOST_TRIPLE=\"x86_64-unknown-linux-gnu\" -DCLANG_DEFAULT_RTLIB=\"\" "
-            "-DCLANG_DEFAULT_UNWINDLIB=\"\" -DCLANG_DEFAULT_CXX_STDLIB=\"\""
+            "-DCLANG_DEFAULT_UNWINDLIB=\"\" -DCLANG_DEFAULT_CXX_STDLIB=\"\" -DLLVM_DEFAULT_TARGET_TRIPLE=\"x86_64-unknown-linux-gnu\""
         );
         prb_Str flags = prb_STR("-std=c++17");
         if (prb_strEndsWith(path, prb_STR(".c"))) {
@@ -300,6 +300,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Option")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TargetParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -602,18 +603,20 @@ main() {
 
     // TODO(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
+    prb_Str targetParserLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TargetParser"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
-    // prb_Str compilerDeps = prb_fmt(
-    //     permArena,
-    //     "%.*s %.*s %.*s %.*s",
-    //     prb_LIT(optionLibFile),
-    //     prb_LIT(clangDriverLibFile),
-    //     prb_LIT(clangBasicLibFile),
-    //     prb_LIT(supportLibFile)
-    // );
-    // compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
+    prb_Str compilerDeps = prb_fmt(
+        permArena,
+        "%.*s %.*s %.*s %.*s %.*s",
+        prb_LIT(clangDriverLibFile),
+        prb_LIT(clangBasicLibFile),
+        prb_LIT(targetParserLibFile),
+        prb_LIT(optionLibFile),
+        prb_LIT(supportLibFile)
+    );
+    compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
 
     prb_writeToStdout(prb_fmt(tempArena, "total: %.2fms\n", prb_getMsFrom(scriptStart)));
 }
