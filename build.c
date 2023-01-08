@@ -266,6 +266,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Basic")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -306,7 +307,33 @@ main() {
                 prb_STR("clang/include/clang/AST/CommentCommandList.inc"),
                 prb_STR("clang/AST/CommentCommandList.inc"),
                 prb_STR("clang/Basic/Version.inc"),
+                prb_STR("clang/Basic/DiagnosticFrontendKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticSerializationKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticLexKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticParseKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticASTKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticCommentKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticCrossTUKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticSemaKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticAnalysisKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticRefactoringKinds.inc"),
+                prb_STR("clang/Basic/DiagnosticGroups.inc"),
+                prb_STR("clang/Basic/AttrHasAttributeImpl.inc"),
+                prb_STR("clang/Basic/AttrSubMatchRulesList.inc"),
+                prb_STR("clang/Sema/AttrParsedAttrKinds.inc"),
+                prb_STR("clang/Sema/AttrParsedAttrList.inc"),
+                prb_STR("clang/Sema/AttrSpellingListIndex.inc"),
+                prb_STR("VCSVersion.inc"),
+                prb_STR("clang/Basic/arm_sve_typeflags.inc"),
+                prb_STR("clang/Basic/arm_neon.inc"),
+                prb_STR("clang/Basic/arm_fp16.inc"),
+                prb_STR("clang/Basic/arm_mve_builtins.inc"),
+                prb_STR("clang/Basic/arm_cde_builtins.inc"),
+                prb_STR("clang/Basic/arm_sve_builtins.inc"),
+                prb_STR("clang/Basic/riscv_vector_builtins.inc"),
+                prb_STR("llvm/Frontend/OpenMP/OMP.h.inc"),
             };
+
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
             if (newpathIndex == -1) {
                 shput(newpaths, newpath.ptr, ogpath);
@@ -334,6 +361,8 @@ main() {
                         relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
                     } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
                         relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/include"), includedFile);
+                    } else if (prb_streq(includedFile, prb_STR("Targets.h"))) {
+                        relevantPath = prb_STR("clang/lib/Basic/Targets.h");
                     } else if (!prb_streq(relevantPath, prb_STR("x.h"))) {
                         prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
                         prb_assert(includeFindRes.found);
@@ -576,10 +605,29 @@ main() {
         prb_STR("-gen-clang-sa-checkers")
     );
 
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/arm_neon.td"),
+        prb_STR("clang_include_clang_Basic_arm_neon.inc"),
+        prb_STR("clang/include/clang/Basic"),
+        prb_STR("-gen-arm-neon")
+    );
+
     // TODO(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
-    prb_Str clangDriverLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
+    prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
+    prb_Str clangBasicLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
-    prb_Str compilerDeps = prb_fmt(permArena, "%.*s %.*s %.*s", prb_LIT(optionLibFile), prb_LIT(clangDriverLibFile), prb_LIT(supportLibFile));
-    compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
+    // prb_Str compilerDeps = prb_fmt(
+    //     permArena,
+    //     "%.*s %.*s %.*s %.*s",
+    //     prb_LIT(optionLibFile),
+    //     prb_LIT(clangDriverLibFile),
+    //     prb_LIT(clangBasicLibFile),
+    //     prb_LIT(supportLibFile)
+    // );
+    // compileExe(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"), compilerDeps);
 }
