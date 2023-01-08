@@ -32,6 +32,12 @@ replaceSeps(prb_Arena* arena, prb_Str str) {
     return newname;
 }
 
+function bool
+isSrcFile(prb_Str path) {
+    bool result = prb_strEndsWith(path, prb_STR(".cpp")) || prb_strEndsWith(path, prb_STR(".c"));
+    return result;
+}
+
 function prb_Str
 compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCount) {
     prb_Arena      objListArena = prb_createArenaFromArena(arena, 1 * prb_MEGABYTE);
@@ -40,7 +46,7 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
     prb_Process* objProcs = 0;
     for (i32 srcIndex = 0; srcIndex < srcFileCount; srcIndex++) {
         prb_Str path = srcFiles[srcIndex];
-        prb_assert(prb_strEndsWith(path, prb_STR(".cpp")));
+        prb_assert(isSrcFile(path));
         prb_Str filename = prb_getLastEntryInPath(path);
         prb_Str outname = prb_replaceExt(arena, filename, prb_STR("obj"));
         prb_Str out = prb_pathJoin(arena, outdir, outname);
@@ -53,7 +59,11 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
             "-DHAVE_GETPAGESIZE=1 -DHAVE_MALLINFO2=1 -DHAVE_PTHREAD_H -DHAVE_ERRNO_H -DHAVE_STRERROR_R "
             "-DBUG_REPORT_URL=\"hawtdawgadverntures.xyz\""
         );
-        prb_Str cmd = prb_fmt(arena, "clang -g %.*s -Werror -Wfatal-errors -std=c++17 -c %.*s -o %.*s", prb_LIT(defines), prb_LIT(path), prb_LIT(out));
+        prb_Str flags = prb_STR("-std=c++17");
+        if (prb_strEndsWith(path, prb_STR(".c"))) {
+            flags = prb_STR("");
+        }
+        prb_Str cmd = prb_fmt(arena, "clang -g %.*s %.*s -Werror -Wfatal-errors -c %.*s -o %.*s", prb_LIT(defines), prb_LIT(flags), prb_LIT(path), prb_LIT(out));
         prb_writelnToStdout(arena, cmd);
         prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
         prb_assert(prb_launchProcesses(arena, &proc, 1, prb_Background_Yes));
@@ -73,11 +83,12 @@ execCmd(prb_Arena* arena, prb_Str cmd) {
 }
 
 function void
-addAllCppFiles(prb_Arena* arena, prb_Str** storage, prb_Str dir) {
+addAllSrcFiles(prb_Arena* arena, prb_Str** storage, prb_Str dir) {
     prb_Str* allEntries = prb_getAllDirEntries(arena, dir, prb_Recursive_No);
+    prb_assert(arrlen(allEntries) > 0);
     for (i32 ind = 0; ind < arrlen(allEntries); ind++) {
         prb_Str entry = allEntries[ind];
-        if (prb_strEndsWith(entry, prb_STR(".cpp"))) {
+        if (isSrcFile(entry)) {
             arrput(*storage, entry);
         }
     }
@@ -92,7 +103,7 @@ compileObjsThatStartWith(prb_Arena* arena, prb_Str builddir, prb_Str* allFilesIn
     for (i32 srcIndex = 0; srcIndex < arrlen(allFilesInSrc); srcIndex++) {
         prb_Str path = allFilesInSrc[srcIndex];
         prb_Str name = prb_getLastEntryInPath(path);
-        if (prb_strEndsWith(name, prb_STR(".cpp")) && prb_strStartsWith(name, startsWith)) {
+        if (isSrcFile(name) && prb_strStartsWith(name, startsWith)) {
             arrput(files, path);
         }
     }
@@ -115,13 +126,57 @@ compileStaticLib(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFile
     if (skip == Skip_No) {
         prb_assert(prb_removePathIfExists(arena, outfile));
         prb_TempMemory temp = prb_beginTempMemory(arena);
-        prb_Str objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
-        prb_Str libCmd = prb_fmt(arena, "ar rcs %.*s %.*s", prb_LIT(outfile), prb_LIT(objs));
+        prb_Str        objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
+        prb_Str        libCmd = prb_fmt(arena, "ar rcs %.*s %.*s", prb_LIT(outfile), prb_LIT(objs));
         execCmd(arena, libCmd);
         prb_endTempMemory(temp);
     }
 
     return outfile;
+}
+
+function prb_Str
+compileExe(Skip skip, prb_Arena* arena, prb_Str builddir, prb_Str* allFilesInSrc, prb_Str startsWith, prb_Str deps) {
+    prb_Str outfile = prb_pathJoin(arena, builddir, prb_fmt(arena, "%.*s.exe", prb_LIT(startsWith)));
+
+    if (skip == Skip_No) {
+        prb_assert(prb_removePathIfExists(arena, outfile));
+        prb_TempMemory temp = prb_beginTempMemory(arena);
+        prb_Str        objs = compileObjsThatStartWith(arena, builddir, allFilesInSrc, startsWith);
+        prb_Str        libCmd = prb_fmt(arena, "clang -o %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(outfile), prb_LIT(objs), prb_LIT(deps));
+        execCmd(arena, libCmd);
+        prb_endTempMemory(temp);
+    }
+
+    return outfile;
+}
+
+function void
+runTableGen(prb_Arena* arena, prb_Str tableGenExe, prb_Str llvmRootDir, prb_Str clangdcdir, prb_Str in, prb_Str out, prb_Str includes, prb_Str args) {
+    prb_TempMemory temp = prb_beginTempMemory(arena);
+
+    prb_GrowingStr includePathsBuilder = prb_beginStr(arena);
+    prb_StrScanner scanner = prb_createStrScanner(includes);
+    while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR(" "), .alwaysMatchEnd = true}, prb_StrScannerSide_AfterMatch)) {
+        prb_addStrSegment(&includePathsBuilder, "-I%.*s/%.*s", prb_LIT(llvmRootDir), prb_LIT(scanner.betweenLastMatches));
+    }
+    prb_Str includePaths = prb_endStr(&includePathsBuilder);
+
+    prb_Str inpath = prb_pathJoin(arena, llvmRootDir, in);
+    prb_Str outpath = prb_pathJoin(arena, clangdcdir, out);
+
+    prb_Str cmd = prb_fmt(
+        arena,
+        "%.*s %.*s %.*s %.*s -o %.*s",
+        prb_LIT(tableGenExe),
+        prb_LIT(args),
+        prb_LIT(includePaths),
+        prb_LIT(inpath),
+        prb_LIT(outpath)
+    );
+
+    execCmd(arena, cmd);
+    prb_endTempMemory(temp);
 }
 
 int
@@ -132,7 +187,7 @@ main() {
     prb_Arena* tempArena = &arena_;
 
     prb_Str rootdir = prb_getParentDir(permArena, prb_STR(__FILE__));
-    prb_Str llvmRootdir = prb_pathJoin(permArena, rootdir, prb_STR("llvm-project"));
+    prb_Str llvmRootDir = prb_pathJoin(permArena, rootdir, prb_STR("llvm-project"));
     prb_Str clangdcdir = prb_pathJoin(permArena, rootdir, prb_STR("clang_src"));
     prb_Str builddir = prb_pathJoin(permArena, rootdir, prb_STR("build"));
 
@@ -140,22 +195,21 @@ main() {
     prb_clearDir(tempArena, clangdcdir);
 
     prb_Str* clangRelevantFiles = 0;
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/tools/driver/driver.cpp")));
+    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver/driver.cpp")));
 
-    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/Support")));
-    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("llvm/lib/TableGen")));
-    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/lib/Support")));
-    addAllCppFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, prb_STR("clang/utils/TableGen")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TableGen")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
-    prb_Str*       newClangCppFiles = 0;
 
     // NOTE(khvorov) Pull the relevant files
     for (i32 clangSrcFileIndex = 0; clangSrcFileIndex < arrlen(clangRelevantFiles); clangSrcFileIndex++) {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
         prb_Str        ogpath = clangRelevantFiles[clangSrcFileIndex];
-
-        bool isCpp = prb_strEndsWith(ogpath, prb_STR(".cpp"));
 
         prb_Str newpath = {};
         {
@@ -163,9 +217,6 @@ main() {
             prb_assert(res.found);
             prb_Str newname = replaceSeps(tempArena, res.afterMatch);
             newpath = prb_pathJoin(permArena, clangdcdir, newname);
-            if (isCpp) {
-                arrput(newClangCppFiles, newpath);
-            }
         }
 
         {
@@ -237,7 +288,7 @@ main() {
                             if (prb_strEndsWith(relevantPath, prb_STR("Lex/x"))) {
                                 prb_debugbreak();
                             }
-                            arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootdir, relevantPath));
+                            arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, relevantPath));
                         }
                     }
                 }
@@ -292,60 +343,52 @@ main() {
 
     prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
 
-    prb_Str supportLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
-    prb_Str tableGenLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TableGen"));
-    prb_Str clangSupportLibFile = compileStaticLib(Skip_Yes, tempArena, builddir, allFilesInSrc, prb_STR("clang_lib_Support"));
+    // NOTE(khvorov) Static libs we need for tablegen
+    prb_Str supportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
+    prb_Str clangSupportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Support"));
+    prb_Str tableGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TableGen"));
+
+    prb_Str depsOfTablegen = prb_fmt(permArena, "%.*s %.*s %.*s", prb_LIT(tableGenLibFile), prb_LIT(clangSupportLibFile), prb_LIT(supportLibFile));
 
     // NOTE(khvorov) Compile just the table gen
-    prb_Str tableGenExe = prb_pathJoin(permArena, builddir, prb_STR("clang_utils_TableGen.exe"));
-    {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        objs = compileObjsThatStartWith(tempArena, builddir, allFilesInSrc, prb_STR("clang_utils_TableGen"));
-        prb_Str        linkCmd = prb_fmt(tempArena, "clang -o %.*s %.*s %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(tableGenExe), prb_LIT(objs), prb_LIT(tableGenLibFile), prb_LIT(clangSupportLibFile), prb_LIT(supportLibFile));
-        execCmd(tempArena, linkCmd);
-        prb_endTempMemory(temp);
-    }
+    prb_Str llvmTableGenExe = compileExe(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_utils_TableGen"), depsOfTablegen);
+    prb_Str clangTableGenExe = compileExe(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_utils_TableGen"), depsOfTablegen);
+
+    // TODO(khvorov) Generate the files we need table gen for
+    runTableGen(
+        tempArena,
+        llvmTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Driver/Options.td"),
+        prb_STR("clang_include_clang_Driver_Options.inc"),
+        prb_STR("llvm/include"),
+        prb_STR("-gen-opt-parser-defs")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/Diagnostic.td"),
+        prb_STR("clang_include_clang_Basic_DiagnosticCommonKinds.inc"),
+        prb_STR("clang/include/clang/Basic"),
+        prb_STR("-gen-clang-diags-defs -clang-component=Common")
+    );
+
+    runTableGen(
+        tempArena,
+        clangTableGenExe,
+        llvmRootDir,
+        clangdcdir,
+        prb_STR("clang/include/clang/Basic/Diagnostic.td"),
+        prb_STR("clang_include_clang_Basic_DiagnosticDriverKinds.inc"),
+        prb_STR("clang/include/clang/Basic"),
+        prb_STR("-gen-clang-diags-defs -clang-component=Driver")
+    );
 
     prb_debugbreak();
 
-    // TODO(khvorov) Generate the files we need table gen for
-    {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_include_clang_Basic_DiagnosticCommonKinds.inc"));
-        prb_Str        content = prb_STR("");
-        prb_assert(prb_writeEntireFile(tempArena, outpath, content.ptr, content.len));
-        prb_endTempMemory(temp);
-    }
-
-    {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_include_clang_Basic_DiagnosticDriverKinds.inc"));
-        prb_Str        content = prb_STR("");
-        prb_assert(prb_writeEntireFile(tempArena, outpath, content.ptr, content.len));
-        prb_endTempMemory(temp);
-    }
-
-    {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_include_clang_Driver_Options.inc"));
-        prb_Str        content = prb_STR("");
-        prb_assert(prb_writeEntireFile(tempArena, outpath, content.ptr, content.len));
-        prb_endTempMemory(temp);
-    }
-
     // TODO(khvorov) Compile the actual compiler
-    for (i32 newCppfileIndex = 0; newCppfileIndex < arrlen(newClangCppFiles); newCppfileIndex++) {
-        prb_TempMemory temp = prb_beginTempMemory(tempArena);
-        prb_Str        path = newClangCppFiles[newCppfileIndex];
-        prb_assert(prb_strEndsWith(path, prb_STR(".cpp")));
-        prb_Str name = prb_getLastEntryInPath(path);
-        if (!prb_strStartsWith(name, prb_STR("clang_utils"))) {
-            prb_Str out = prb_replaceExt(tempArena, path, prb_STR("obj"));
-            prb_Str cmd = prb_fmt(tempArena, "clang -Wfatal-errors -std=c++17 -c %.*s -o %.*s", prb_LIT(path), prb_LIT(out));
-            prb_writelnToStdout(tempArena, cmd);
-            prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
-            prb_assert(prb_launchProcesses(tempArena, &proc, 1, prb_Background_No));
-        }
-        prb_endTempMemory(temp);
-    }
 }
