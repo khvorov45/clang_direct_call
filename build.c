@@ -285,7 +285,7 @@ int
 main() {
     prb_TimeStart scriptStart = prb_timeStart();
 
-    prb_Arena  arena_ = prb_createArenaFromVmem(1 * prb_GIGABYTE + 900 * prb_MEGABYTE);
+    prb_Arena  arena_ = prb_createArenaFromVmem(2ll * prb_GIGABYTE);
     prb_Arena  permArena_ = prb_createArenaFromArena(&arena_, 100 * prb_MEGABYTE);
     prb_Arena* permArena = &permArena_;
     prb_Arena* tempArena = &arena_;

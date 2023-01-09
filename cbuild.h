@@ -262,16 +262,16 @@ for (prb_Iter iter = prb_createIter(); prb_iterNext(&iter) == prb_Success;) {
 #endif
 
 typedef struct prb_Arena {
-    void*   base;
-    int32_t size;
-    int32_t used;
-    bool    lockedForStr;
-    int32_t tempCount;
+    void*    base;
+    intptr_t size;
+    intptr_t used;
+    bool     lockedForStr;
+    int32_t  tempCount;
 } prb_Arena;
 
 typedef struct prb_TempMemory {
     prb_Arena* arena;
-    int32_t    usedAtBegin;
+    intptr_t   usedAtBegin;
     int32_t    tempCountAtBegin;
 } prb_TempMemory;
 
@@ -501,14 +501,14 @@ typedef struct prb_CoreCountResult {
 // SECTION Memory
 prb_PUBLICDEC bool           prb_memeq(const void* ptr1, const void* ptr2, int32_t bytes);
 prb_PUBLICDEC int32_t        prb_getOffsetForAlignment(void* ptr, int32_t align);
-prb_PUBLICDEC void*          prb_vmemAlloc(int32_t bytes);
-prb_PUBLICDEC prb_Arena      prb_createArenaFromVmem(int32_t bytes);
-prb_PUBLICDEC prb_Arena      prb_createArenaFromArena(prb_Arena* arena, int32_t bytes);
+prb_PUBLICDEC void*          prb_vmemAlloc(intptr_t bytes);
+prb_PUBLICDEC prb_Arena      prb_createArenaFromVmem(intptr_t bytes);
+prb_PUBLICDEC prb_Arena      prb_createArenaFromArena(prb_Arena* arena, intptr_t bytes);
 prb_PUBLICDEC void*          prb_arenaAllocAndZero(prb_Arena* arena, int32_t size, int32_t align);
 prb_PUBLICDEC void           prb_arenaAlignFreePtr(prb_Arena* arena, int32_t align);
 prb_PUBLICDEC void*          prb_arenaFreePtr(prb_Arena* arena);
-prb_PUBLICDEC int32_t        prb_arenaFreeSize(prb_Arena* arena);
-prb_PUBLICDEC void           prb_arenaChangeUsed(prb_Arena* arena, int32_t byteDelta);
+prb_PUBLICDEC intptr_t       prb_arenaFreeSize(prb_Arena* arena);
+prb_PUBLICDEC void           prb_arenaChangeUsed(prb_Arena* arena, intptr_t byteDelta);
 prb_PUBLICDEC prb_TempMemory prb_beginTempMemory(prb_Arena* arena);
 prb_PUBLICDEC void           prb_endTempMemory(prb_TempMemory temp);
 
@@ -1049,7 +1049,7 @@ prb_getOffsetForAlignment(void* ptr, int32_t align) {
 }
 
 prb_PUBLICDEF void*
-prb_vmemAlloc(int32_t bytes) {
+prb_vmemAlloc(intptr_t bytes) {
 #if prb_PLATFORM_WINDOWS
 
     void* ptr = VirtualAlloc(0, (SIZE_T)bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -1068,7 +1068,7 @@ prb_vmemAlloc(int32_t bytes) {
 }
 
 prb_PUBLICDEF prb_Arena
-prb_createArenaFromVmem(int32_t bytes) {
+prb_createArenaFromVmem(intptr_t bytes) {
     prb_Arena arena = {
         .base = prb_vmemAlloc(bytes),
         .size = bytes,
@@ -1080,7 +1080,7 @@ prb_createArenaFromVmem(int32_t bytes) {
 }
 
 prb_PUBLICDEF prb_Arena
-prb_createArenaFromArena(prb_Arena* parent, int32_t bytes) {
+prb_createArenaFromArena(prb_Arena* parent, intptr_t bytes) {
     prb_Arena arena = {
         .base = prb_arenaFreePtr(parent),
         .size = bytes,
@@ -1114,14 +1114,14 @@ prb_arenaFreePtr(prb_Arena* arena) {
     return result;
 }
 
-prb_PUBLICDEF int32_t
+prb_PUBLICDEF intptr_t
 prb_arenaFreeSize(prb_Arena* arena) {
-    int32_t result = arena->size - arena->used;
+    intptr_t result = arena->size - arena->used;
     return result;
 }
 
 prb_PUBLICDEF void
-prb_arenaChangeUsed(prb_Arena* arena, int32_t byteDelta) {
+prb_arenaChangeUsed(prb_Arena* arena, intptr_t byteDelta) {
     prb_assert(prb_arenaFreeSize(arena) >= byteDelta);
     arena->used += byteDelta;
 }
@@ -1156,7 +1156,7 @@ prb_windows_getWideStr(prb_Arena* arena, prb_Str str) {
     prb_windows_WideStr result = {.ptr = 0, .len = 0};
     prb_arenaAlignFreePtr(arena, prb_alignof(uint16_t));
     result.ptr = (LPWSTR)prb_arenaFreePtr(arena);
-    int multiByteResult = MultiByteToWideChar(CP_UTF8, 0, str.ptr, str.len, result.ptr, prb_arenaFreeSize(arena) / (int32_t)sizeof(uint16_t));
+    int multiByteResult = MultiByteToWideChar(CP_UTF8, 0, str.ptr, str.len, result.ptr, (int)prb_min(prb_arenaFreeSize(arena), INT32_MAX) / (int32_t)sizeof(uint16_t));
     prb_assert(multiByteResult > 0);
     result.len = multiByteResult;
     LPWSTR temp = result.ptr;
@@ -1170,7 +1170,7 @@ static prb_Str
 prb_windows_strFromWideStr(prb_Arena* arena, prb_windows_WideStr wstr) {
     prb_Str result = {.ptr = 0, .len = 0};
     char*   ptr = (char*)prb_arenaFreePtr(arena);
-    int     bytesWritten = WideCharToMultiByte(CP_UTF8, 0, wstr.ptr, wstr.len, ptr, prb_arenaFreeSize(arena), 0, 0);
+    int     bytesWritten = WideCharToMultiByte(CP_UTF8, 0, wstr.ptr, wstr.len, ptr, (int)prb_min(prb_arenaFreeSize(arena), INT32_MAX), 0, 0);
     prb_assert(bytesWritten > 0);
     result.ptr = ptr;
     result.len = bytesWritten;
@@ -1520,7 +1520,7 @@ prb_getWorkingDir(prb_Arena* arena) {
 
     prb_arenaAlignFreePtr(arena, prb_alignof(uint16_t));
     LPWSTR ptrWide = (LPWSTR)prb_arenaFreePtr(arena);
-    DWORD  lenWide = GetCurrentDirectoryW(prb_arenaFreeSize(arena) / sizeof(uint16_t), ptrWide);
+    DWORD  lenWide = GetCurrentDirectoryW((DWORD)prb_min(prb_arenaFreeSize(arena), UINT32_MAX) / sizeof(uint16_t), ptrWide);
     prb_assert(lenWide > 0);
     prb_arenaChangeUsed(arena, (int32_t)lenWide * (int32_t)sizeof(uint16_t));
     result = prb_windows_strFromWideStr(arena, (prb_windows_WideStr) {ptrWide, (int32_t)lenWide});
@@ -1765,7 +1765,7 @@ prb_getAllDirEntriesCustomBuffer(prb_Arena* arena, prb_Str dir, prb_Recursive mo
             if (openRes.success) {
                 prb_arenaAlignFreePtr(arena, prb_alignof(prb_linux_Dirent64));
                 prb_linux_Dirent64* buf = (prb_linux_Dirent64*)(prb_arenaFreePtr(arena));
-                long syscallReturn = syscall(SYS_getdents64, openRes.handle, buf, prb_arenaFreeSize(arena));
+                long syscallReturn = syscall(SYS_getdents64, openRes.handle, buf, (unsigned int)prb_min(prb_arenaFreeSize(arena), UINT32_MAX));
                 if (syscallReturn > 0) {
                     prb_arenaChangeUsed(arena, syscallReturn);
                     for (long offset = 0; offset < syscallReturn;) {
@@ -2235,7 +2235,7 @@ prb_addStrSegment(prb_GrowingStr* gstr, const char* fmt, ...) {
     prb_assert(gstr->arena->lockedForStr);
     va_list args;
     va_start(args, fmt);
-    prb_Str seg = prb_vfmtCustomBuffer((uint8_t*)prb_arenaFreePtr(gstr->arena), prb_arenaFreeSize(gstr->arena), fmt, args);
+    prb_Str seg = prb_vfmtCustomBuffer((uint8_t*)prb_arenaFreePtr(gstr->arena), (int32_t)prb_min(prb_arenaFreeSize(gstr->arena), INT32_MAX), fmt, args);
     prb_arenaChangeUsed(gstr->arena, seg.len);
     gstr->str.len += seg.len;
     va_end(args);
@@ -2263,7 +2263,7 @@ prb_fmt(prb_Arena* arena, const char* fmt, ...) {
     prb_assert(!arena->lockedForStr);
     va_list args;
     va_start(args, fmt);
-    prb_Str result = prb_vfmtCustomBuffer(prb_arenaFreePtr(arena), prb_arenaFreeSize(arena), fmt, args);
+    prb_Str result = prb_vfmtCustomBuffer(prb_arenaFreePtr(arena), (int32_t)prb_min(prb_arenaFreeSize(arena), INT32_MAX), fmt, args);
     prb_arenaChangeUsed(arena, result.len);
     prb_arenaAllocAndZero(arena, 1, 1);  // NOTE(khvorov) Null terminator
     va_end(args);
@@ -2716,7 +2716,7 @@ prb_linux_getAffinity(prb_Arena* arena) {
     int32_t reqAlign = prb_alignof(unsigned long);
     prb_arenaAlignFreePtr(arena, reqAlign);
     result.affinity = (uint8_t*)prb_arenaFreePtr(arena);
-    int32_t arenaSize = prb_arenaFreeSize(arena);
+    int32_t arenaSize = (int32_t)prb_min(prb_arenaFreeSize(arena), INT32_MAX);
     int32_t arenaSizeAligned = arenaSize & (~(reqAlign - 1));
     int32_t sizeReduced = prb_min(arenaSizeAligned, prb_MEGABYTE);
     result.size = syscall(SYS_sched_getaffinity, 0, sizeReduced, result.affinity);
@@ -3418,7 +3418,7 @@ prb_getenv(prb_Arena* arena, prb_Str name) {
     prb_arenaAlignFreePtr(arena, prb_alignof(uint16_t));
     prb_windows_WideStr wname = prb_windows_getWideStr(arena, name);
     LPWSTR              wptr = (LPWSTR)prb_arenaFreePtr(arena);
-    DWORD               getEnvResult = GetEnvironmentVariableW(wname.ptr, wptr, (DWORD)prb_arenaFreeSize(arena));
+    DWORD               getEnvResult = GetEnvironmentVariableW(wname.ptr, wptr, (DWORD)prb_min(prb_arenaFreeSize(arena), UINT32_MAX));
     if (getEnvResult > 0) {
         prb_arenaChangeUsed(arena, (int32_t)getEnvResult * (int32_t)sizeof(*wptr));
         prb_arenaAllocAndZero(arena, 2, 1);  // NOTE(khvorov) Null terminator
@@ -4478,7 +4478,7 @@ prb_STB_SPRINTF_DECORATE(vsprintfcb)(prb_STBSP_SPRINTFCB* callback, void* user, 
                 pr = sizeof(void*) * 2;
                 fl &= ~prb_STBSP__LEADINGZERO;  // 'p' only prints the pointer with zeros
                 prb_FALLTHROUGH;
-                    // fall through - to X
+                // fall through - to X
 
             case 'X':  // upper hex
             case 'x':  // lower hex
@@ -5704,12 +5704,12 @@ prb_stbds_siphash_bytes(void* p, size_t len, size_t seed) {
     data = len << (prb_STBDS_SIZE_T_BITS - 8);
     switch (len - i) {
         case 7: data |= ((size_t)d[6] << 24) << 24; prb_FALLTHROUGH;  // fall through
-        case 6: data |= ((size_t)d[5] << 20) << 20; prb_FALLTHROUGH; // fall through
-        case 5: data |= ((size_t)d[4] << 16) << 16; prb_FALLTHROUGH; // fall through
-        case 4: data |= (d[3] << 24); prb_FALLTHROUGH; // fall through
-        case 3: data |= (d[2] << 16); prb_FALLTHROUGH; // fall through
-        case 2: data |= (d[1] << 8); prb_FALLTHROUGH; // fall through
-        case 1: data |= d[0]; prb_FALLTHROUGH; // fall through
+        case 6: data |= ((size_t)d[5] << 20) << 20; prb_FALLTHROUGH;  // fall through
+        case 5: data |= ((size_t)d[4] << 16) << 16; prb_FALLTHROUGH;  // fall through
+        case 4: data |= (d[3] << 24); prb_FALLTHROUGH;  // fall through
+        case 3: data |= (d[2] << 16); prb_FALLTHROUGH;  // fall through
+        case 2: data |= (d[1] << 8); prb_FALLTHROUGH;  // fall through
+        case 1: data |= d[0]; prb_FALLTHROUGH;  // fall through
         case 0: break;
     }
     v3 ^= data;
