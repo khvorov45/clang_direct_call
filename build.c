@@ -93,12 +93,18 @@ execCmd(prb_Arena* arena, prb_Str cmd) {
 function void
 addAllSrcFiles(prb_Arena* arena, prb_Str** storage, prb_Str dir) {
     prb_Str* allEntries = prb_getAllDirEntries(arena, dir, prb_Recursive_No);
-    prb_assert(arrlen(allEntries) > 0);
+    bool atleastone = false;
     for (i32 ind = 0; ind < arrlen(allEntries); ind++) {
         prb_Str entry = allEntries[ind];
         if (isSrcFile(entry)) {
             arrput(*storage, entry);
+            atleastone = true;
         }
+    }
+
+    if (!atleastone) {
+        prb_writeToStdout(prb_fmt(arena, "0 src files: %.*s\n", prb_LIT(dir)));
+        prb_assert(!"no files");
     }
 }
 
@@ -188,7 +194,7 @@ runTableGen(prb_Arena* arena, void* data) {
         prb_GrowingStr includePathsBuilder = prb_beginStr(arena);
         prb_StrScanner scanner = prb_createStrScanner(includes);
         while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR(" "), .alwaysMatchEnd = true}, prb_StrScannerSide_AfterMatch)) {
-            prb_addStrSegment(&includePathsBuilder, "-I%.*s/%.*s", prb_LIT(llvmRootDir), prb_LIT(scanner.betweenLastMatches));
+            prb_addStrSegment(&includePathsBuilder, " -I%.*s/%.*s", prb_LIT(llvmRootDir), prb_LIT(scanner.betweenLastMatches));
         }
         includePaths = prb_endStr(&includePathsBuilder);
     }
@@ -214,7 +220,7 @@ runTableGen(prb_Arena* arena, void* data) {
         prb_assert(outread.success);
         prb_Str outstr = prb_strFromBytes(outread.content);
 
-        prb_Arena      flatoutArena = prb_createArenaFromArena(arena, 10 * prb_MEGABYTE);
+        prb_Arena      flatoutArena = prb_createArenaFromArena(arena, prb_arenaFreeSize(arena) - 100 * prb_KILOBYTE);
         prb_GrowingStr flatoutBuilder = prb_beginStr(&flatoutArena);
         prb_StrScanner scanner = prb_createStrScanner(outstr);
         while (prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_STR("#include \"")}, prb_StrScannerSide_AfterMatch)) {
@@ -305,15 +311,24 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Option")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/MC")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/MC/MCParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TargetParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/ProfileData")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Demangle")));
-    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/DebugInfo")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/BinaryFormat")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Object")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TextAPI")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Remarks")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/IR")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/IRReader")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/AsmParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/DebugInfo/DWARF")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Bitstream/Reader")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Bitcode/Reader")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/WindowsDriver")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86/TargetInfo")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -406,6 +421,16 @@ main() {
                 prb_STR("llvm/IR/IntrinsicsXCore.h"),
                 prb_STR("llvm/IR/IntrinsicImpl.inc"),
                 prb_STR("llvm/IR/IntrinsicEnums.inc"),
+                prb_STR("X86GenRegisterBank.inc"),
+                prb_STR("X86GenDAGISel.inc"),
+                prb_STR("X86GenCallingConv.inc"),
+                prb_STR("X86GenGlobalISel.inc"),
+                prb_STR("X86GenEVEX2VEXTables.inc"),
+                prb_STR("X86GenInstrInfo.inc"),
+                prb_STR("X86GenRegisterInfo.inc"),
+                prb_STR("X86GenFastISel.inc"),
+                prb_STR("X86GenSubtargetInfo.inc"),
+                prb_STR("X86GenMnemonicTables.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -438,9 +463,10 @@ main() {
                         prb_assert(prb_strScannerMove(&scanner, (prb_StrFindSpec) {.pattern = prb_fmt(tempArena, "%c", quoteCh2)}, prb_StrScannerSide_AfterMatch));
 
                         prb_Str includedFile = scanner.betweenLastMatches;
+                        bool isX86Inc = prb_strStartsWith(includedFile, prb_STR("X86Gen")) && prb_strEndsWith(includedFile, prb_STR(".inc"));
 
                         prb_Str relevantPath = includedFile;
-                        bool pathNotModified = false;
+                        bool    pathNotModified = false;
                         if (prb_strStartsWith(includedFile, prb_STR("clang"))) {
                             relevantPath = prb_pathJoin(tempArena, prb_STR("clang/include"), includedFile);
                         } else if (prb_strStartsWith(includedFile, prb_STR("llvm"))) {
@@ -449,7 +475,9 @@ main() {
                             relevantPath = prb_pathJoin(tempArena, prb_STR("clang/lib/Driver"), includedFile);
                         } else if (prb_streq(includedFile, prb_STR("Targets.h"))) {
                             relevantPath = prb_STR("clang/lib/Basic/Targets.h");
-                        } else if (quoteCh1 == '"' && !prb_streq(relevantPath, prb_STR("x.h"))) {
+                        } else if (prb_strEndsWith(includedFile, prb_STR("X86TargetInfo.h"))) {
+                            relevantPath = prb_STR("llvm/lib/Target/X86/TargetInfo/X86TargetInfo.h");
+                        } else if (quoteCh1 == '"' && !prb_streq(relevantPath, prb_STR("x.h")) && !isX86Inc) {
                             prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
                             prb_assert(includeFindRes.found);
                             relevantPath = prb_pathJoin(tempArena, includeFindRes.afterMatch, includedFile);
@@ -459,7 +487,7 @@ main() {
 
                         prb_Str includedFileFlattened = replaceSeps(tempArena, relevantPath);
                         if (pathNotModified) {
-                            prb_addStrSegment(&newContentBuilder, "#include <%.*s>", prb_LIT(includedFile));
+                            prb_addStrSegment(&newContentBuilder, "#include %c%.*s%c", quoteCh1, prb_LIT(includedFile), quoteCh2);
                         } else {
                             prb_addStrSegment(&newContentBuilder, "#include \"%.*s\"", prb_LIT(includedFileFlattened));
                             if (notIn(includedFile, generatedFiles, prb_arrayCount(generatedFiles))) {
@@ -468,7 +496,7 @@ main() {
                         }
 
                     } else {
-                        prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.match));                        
+                        prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.match));
                     }
                 }
                 prb_addStrSegment(&newContentBuilder, "%.*s", prb_LIT(scanner.afterMatch));
@@ -639,6 +667,16 @@ main() {
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicsVE.h", "llvm/include", "-gen-intrinsic-enums -intrinsic-prefix=ve"},
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicsXCore.h", "llvm/include", "-gen-intrinsic-enums -intrinsic-prefix=xcore"},
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicImpl.inc", "llvm/include", "-gen-intrinsic-impl"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenRegisterInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-register-info"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenInstrInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-instr-info -instr-info-expand-mi-operand-info=0"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenSubtargetInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-subtarget"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenMnemonicTables.inc", "llvm/lib/Target/X86 llvm/include", "-gen-x86-mnemonic-tables -asmwriternum=1"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenDAGISel.inc", "llvm/lib/Target/X86 llvm/include", "-gen-dag-isel"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenRegisterBank.inc", "llvm/lib/Target/X86 llvm/include", "-gen-register-bank"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenFastISel.inc", "llvm/lib/Target/X86 llvm/include", "-gen-fast-isel"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenEVEX2VEXTables.inc", "llvm/lib/Target/X86 llvm/include", "-gen-x86-EVEX2VEX-tables"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenCallingConv.inc", "llvm/lib/Target/X86 llvm/include", "-gen-callingconv"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenGlobalISel.inc", "llvm/lib/Target/X86 llvm/include", "-gen-global-isel"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticCommonKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Common"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticDriverKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Driver"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticFrontendKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Frontend"},
@@ -680,7 +718,11 @@ main() {
         for (i32 ind = 0; ind < prb_arrayCount(tableGenArgs); ind++) {
             TableGenArgs args = tableGenArgs[ind];
             tableGenSpecs[ind] = (RunTableGenSpec) {args.exe, llvmRootDir, clangdcdir, prb_STR(args.in), prb_STR(args.out), prb_STR(args.include), prb_STR(args.args)};
-            prb_Job job = prb_createJob(runTableGen, tableGenSpecs + ind, tempArena, 20 * prb_MEGABYTE);
+            intptr_t memsize =  20 * prb_MEGABYTE;
+            if (prb_strStartsWith(prb_STR(args.out), prb_STR("X86Gen"))) {
+                memsize *= 4;
+            }
+            prb_Job job = prb_createJob(runTableGen, tableGenSpecs + ind, tempArena, memsize);
             arrput(jobs, job);
         }
         prb_assert(prb_launchJobs(jobs, arrlen(jobs), prb_Background_Yes));
@@ -699,6 +741,13 @@ main() {
     prb_Str textAPILibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TextAPI"));
     prb_Str binaryFormatLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_BinaryFormat"));
     prb_Str irLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_IR"));
+    prb_Str remarksLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Remarks"));
+    prb_Str bitstreamLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Bitstream"));
+    prb_Str bitcodeLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Bitcode"));
+    prb_Str irreaderLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_IRReader"));
+    prb_Str asmParserLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_AsmParser"));
+    prb_Str windowsDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_WindowsDriver"));
+    prb_Str targetLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Target"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
@@ -713,28 +762,32 @@ main() {
         prb_assert(prb_clearDir(tempArena, outdir));
         prb_Str objs = compileObjs(tempArena, outdir, srcFiles, prb_arrayCount(srcFiles));
 
+        prb_Str deps[] = {
+            targetLibFile,
+            clangDriverLibFile,
+            windowsDriverLibFile,
+            clangBasicLibFile,
+            targetParserLibFile,
+            optionLibFile,
+            profileDataLibFile,
+            debugInfoLibFile,
+            objectLibFile,
+            mcLibFile,
+            binaryFormatLibFile,
+            textAPILibFile,
+            bitcodeLibFile,
+            irreaderLibFile,
+            irLibFile,
+            remarksLibFile,
+            bitstreamLibFile,
+            asmParserLibFile,
+            supportLibFile,
+            demangleLibFile,
+        };
+
+        prb_Str depsStr = prb_stringsJoin(tempArena, deps, prb_arrayCount(deps), prb_STR(" "));
         prb_Str out = prb_pathJoin(tempArena, builddir, prb_STR("clang.exe"));
-
-        prb_Str linkCmd = prb_fmt(
-            permArena,
-            "clang -o %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s %.*s -lstdc++ -lm",
-            prb_LIT(out),
-            prb_LIT(objs),
-            prb_LIT(clangDriverLibFile),
-            prb_LIT(clangBasicLibFile),
-            prb_LIT(targetParserLibFile),
-            prb_LIT(optionLibFile),
-            prb_LIT(profileDataLibFile),
-            prb_LIT(debugInfoLibFile),
-            prb_LIT(objectLibFile),
-            prb_LIT(mcLibFile),
-            prb_LIT(binaryFormatLibFile),
-            prb_LIT(textAPILibFile),
-            prb_LIT(irLibFile),
-            prb_LIT(supportLibFile),
-            prb_LIT(demangleLibFile)
-        );
-
+        prb_Str linkCmd = prb_fmt(permArena, "clang -o %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(out), prb_LIT(objs), prb_LIT(depsStr));
         execCmd(tempArena, linkCmd);
 
         prb_endTempMemory(temp);
