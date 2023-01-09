@@ -74,12 +74,25 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
         prb_Str cmd = prb_fmt(arena, "clang -g %.*s %.*s -Werror -Wfatal-errors -c %.*s -o %.*s", prb_LIT(defines), prb_LIT(flags), prb_LIT(path), prb_LIT(out));
         prb_writelnToStdout(arena, cmd);
         prb_Process proc = prb_createProcess(cmd, (prb_ProcessSpec) {});
-        prb_assert(prb_launchProcesses(arena, &proc, 1, prb_Background_Yes));
         arrput(objProcs, proc);
     }
-    prb_assert(prb_waitForProcesses(objProcs, arrlen(objProcs)));
-
     prb_Str objList = prb_endStr(&objListBuilder);
+
+    i32 totalObjCount = arrlen(objProcs);
+    prb_CoreCountResult chunkSize = prb_getCoreCount(arena);
+    prb_assert(chunkSize.success);
+    i32 chunkCount = (totalObjCount / chunkSize.cores) + 1;
+    i32 procsDoneCount = 0;
+    for (i32 chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+        prb_Process* thisProcSet = objProcs + procsDoneCount;
+        i32 procsLeft = totalObjCount - procsDoneCount;
+        i32 thisChunkSize = prb_min(procsLeft, chunkSize.cores);
+        prb_assert(prb_launchProcesses(arena, thisProcSet, thisChunkSize, prb_Background_Yes));
+        prb_assert(prb_waitForProcesses(thisProcSet, thisChunkSize));
+        procsDoneCount += thisChunkSize;
+    }
+    prb_assert(procsDoneCount == totalObjCount);
+
     return objList;
 }
 
@@ -302,7 +315,7 @@ main() {
     prb_Str builddir = prb_pathJoin(permArena, rootdir, prb_STR("build"));
 
     prb_createDirIfNotExists(tempArena, builddir);
-    prb_clearDir(tempArena, clangdcdir);
+    prb_createDirIfNotExists(tempArena, clangdcdir);
 
     prb_Str* clangRelevantFiles = 0;
     arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver/driver.cpp")));
@@ -330,6 +343,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86/TargetInfo")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Analysis")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -468,7 +482,8 @@ main() {
 
                         bool ignore = prb_strStartsWith(includedFile, prb_STR("google"))
                             || prb_strStartsWith(includedFile, prb_STR("tensorflow"))
-                            || prb_streq(includedFile, prb_STR("InlinerSizeModel.h"));
+                            || prb_streq(includedFile, prb_STR("InlinerSizeModel.h"))
+                            || prb_streq(includedFile, prb_STR("RegallocEvictModel.h"));
 
                         prb_Str relevantPath = includedFile;
                         bool    pathNotModified = false;
@@ -716,7 +731,7 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
     };
 
-    {
+    if (false) {
         prb_TempMemory   temp = prb_beginTempMemory(tempArena);
         RunTableGenSpec* tableGenSpecs = prb_arenaAllocArray(tempArena, RunTableGenSpec, prb_arrayCount(tableGenArgs));
         prb_Job*         jobs = 0;
@@ -754,6 +769,7 @@ main() {
     prb_Str windowsDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_WindowsDriver"));
     prb_Str targetLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Target"));
     prb_Str analysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Analysis"));
+    prb_Str codeGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_CodeGen"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
@@ -770,6 +786,7 @@ main() {
 
         prb_Str deps[] = {
             targetLibFile,
+            codeGenLibFile,
             analysisLibFile,
             clangDriverLibFile,
             windowsDriverLibFile,
