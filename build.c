@@ -78,15 +78,15 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
     }
     prb_Str objList = prb_endStr(&objListBuilder);
 
-    i32 totalObjCount = arrlen(objProcs);
+    i32                 totalObjCount = arrlen(objProcs);
     prb_CoreCountResult chunkSize = prb_getCoreCount(arena);
     prb_assert(chunkSize.success);
     i32 chunkCount = (totalObjCount / chunkSize.cores) + 1;
     i32 procsDoneCount = 0;
     for (i32 chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
         prb_Process* thisProcSet = objProcs + procsDoneCount;
-        i32 procsLeft = totalObjCount - procsDoneCount;
-        i32 thisChunkSize = prb_min(procsLeft, chunkSize.cores);
+        i32          procsLeft = totalObjCount - procsDoneCount;
+        i32          thisChunkSize = prb_min(procsLeft, chunkSize.cores);
         prb_assert(prb_launchProcesses(arena, thisProcSet, thisChunkSize, prb_Background_Yes));
         prb_assert(prb_waitForProcesses(thisProcSet, thisChunkSize));
         procsDoneCount += thisChunkSize;
@@ -325,6 +325,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Option")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/MC")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/MC/MCParser")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/MC/MCDisassembler")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TargetParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/ProfileData")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Demangle")));
@@ -357,6 +358,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver/ToolChains")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver/ToolChains/Arch")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Basic")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Frontend")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -413,6 +415,8 @@ main() {
                 prb_STR("clang/Sema/AttrParsedAttrKinds.inc"),
                 prb_STR("clang/Sema/AttrParsedAttrList.inc"),
                 prb_STR("clang/Sema/AttrSpellingListIndex.inc"),
+                prb_STR("clang/AST/AttrVisitor.inc"),
+                prb_STR("clang/AST/Attrs.inc"),
                 prb_STR("VCSVersion.inc"),
                 prb_STR("clang/Basic/arm_sve_typeflags.inc"),
                 prb_STR("clang/Basic/arm_neon.inc"),
@@ -489,7 +493,11 @@ main() {
                         bool ignore = prb_strStartsWith(includedFile, prb_STR("google"))
                             || prb_strStartsWith(includedFile, prb_STR("tensorflow"))
                             || prb_streq(includedFile, prb_STR("InlinerSizeModel.h"))
-                            || prb_streq(includedFile, prb_STR("RegallocEvictModel.h"));
+                            || prb_streq(includedFile, prb_STR("RegallocEvictModel.h"))
+                            || prb_streq(includedFile, prb_STR("a\\ b\\#c.h"))
+                            || prb_streq(includedFile, prb_STR("x"))
+                            || prb_streq(includedFile, prb_STR("FileName"))
+                            || includedFile.len == 0;
 
                         prb_Str relevantPath = includedFile;
                         bool    pathNotModified = false;
@@ -729,6 +737,8 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Basic_AttrHasAttributeImpl.inc", "clang/include", "-gen-clang-attr-has-attribute-impl"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrKinds.inc", "clang/include", "-gen-clang-attr-parsed-attr-kinds"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrSpellingListIndex.inc", "clang/include", "-gen-clang-attr-spelling-index"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrVisitor.inc", "clang/include", "-gen-clang-attr-ast-visitor"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_Attrs.inc", "clang/include", "-gen-clang-attr-classes"},
         {clangTableGenExe, "clang/include/clang/Basic/TypeNodes.td", "clang_include_clang_AST_TypeNodes.inc", "clang/include", "-gen-clang-type-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/DeclNodes.td", "clang_include_clang_AST_DeclNodes.inc", "clang/include", "-gen-clang-decl-nodes"},
         {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandList.inc", "clang/include", "-gen-clang-comment-command-list"},
@@ -765,7 +775,7 @@ main() {
     // TODO(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
     prb_Str targetParserLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TargetParser"));
-    prb_Str mcLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_MC"));
+    prb_Str mcLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_MC"));
     prb_Str profileDataLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_ProfileData"));
     prb_Str demangleLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Demangle"));
     prb_Str debugInfoLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_DebugInfo"));
@@ -785,6 +795,7 @@ main() {
     prb_Str transformsLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Transforms"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
+    prb_Str clangFrontendLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Frontend"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -798,6 +809,7 @@ main() {
         prb_Str objs = compileObjs(tempArena, outdir, srcFiles, prb_arrayCount(srcFiles));
 
         prb_Str deps[] = {
+            clangFrontendLibFile,
             targetLibFile,
             codeGenLibFile,
             transformsLibFile,
