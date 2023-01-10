@@ -304,7 +304,7 @@ int
 main() {
     prb_TimeStart scriptStart = prb_timeStart();
 
-    prb_Arena  arena_ = prb_createArenaFromVmem(2ll * prb_GIGABYTE);
+    prb_Arena  arena_ = prb_createArenaFromVmem(4ll * prb_GIGABYTE);
     prb_Arena  permArena_ = prb_createArenaFromArena(&arena_, 100 * prb_MEGABYTE);
     prb_Arena* permArena = &permArena_;
     prb_Arena* tempArena = &arena_;
@@ -342,8 +342,14 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86/TargetInfo")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Target/X86/MCTargetDesc")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Analysis")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/LiveDebugValues")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/SelectionDAG")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/GlobalISel")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Utils")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/ObjCARC")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -495,8 +501,12 @@ main() {
                             relevantPath = prb_pathJoin(tempArena, prb_STR("clang/lib/Driver"), includedFile);
                         } else if (prb_streq(includedFile, prb_STR("Targets.h"))) {
                             relevantPath = prb_STR("clang/lib/Basic/Targets.h");
+                        } else if (prb_strStartsWith(includedFile, prb_STR("MCTargetDesc/X86"))) {
+                            relevantPath = prb_pathJoin(tempArena, prb_STR("llvm/lib/Target/X86"), includedFile);
                         } else if (prb_strEndsWith(includedFile, prb_STR("X86TargetInfo.h"))) {
                             relevantPath = prb_STR("llvm/lib/Target/X86/TargetInfo/X86TargetInfo.h");
+                        } else if (prb_streq(includedFile, prb_STR("X86InstrInfo.h"))) {
+                            relevantPath = prb_STR("llvm/lib/Target/X86/X86InstrInfo.h");
                         } else if (quoteCh1 == '"' && !prb_streq(relevantPath, prb_STR("x.h")) && !isX86Inc && !ignore) {
                             prb_StrFindResult includeFindRes = prb_strFind(ogpathDir, (prb_StrFindSpec) {.pattern = prb_STR("/llvm-project/")});
                             prb_assert(includeFindRes.found);
@@ -697,6 +707,8 @@ main() {
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenEVEX2VEXTables.inc", "llvm/lib/Target/X86 llvm/include", "-gen-x86-EVEX2VEX-tables"},
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenCallingConv.inc", "llvm/lib/Target/X86 llvm/include", "-gen-callingconv"},
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenGlobalISel.inc", "llvm/lib/Target/X86 llvm/include", "-gen-global-isel"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenAsmWriter.inc", "llvm/lib/Target/X86 llvm/include", "-gen-asm-writer"},
+        {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenAsmWriter1.inc", "llvm/lib/Target/X86 llvm/include", "-gen-asm-writer -asmwriternum=1"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticCommonKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Common"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticDriverKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Driver"},
         {clangTableGenExe, "clang/include/clang/Basic/Diagnostic.td", "clang_include_clang_Basic_DiagnosticFrontendKinds.inc", "clang/include/clang/Basic", "-gen-clang-diags-defs -clang-component=Frontend"},
@@ -731,7 +743,7 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
     };
 
-    if (false) {
+    if (true) {
         prb_TempMemory   temp = prb_beginTempMemory(tempArena);
         RunTableGenSpec* tableGenSpecs = prb_arenaAllocArray(tempArena, RunTableGenSpec, prb_arrayCount(tableGenArgs));
         prb_Job*         jobs = 0;
@@ -770,6 +782,7 @@ main() {
     prb_Str targetLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Target"));
     prb_Str analysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Analysis"));
     prb_Str codeGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_CodeGen"));
+    prb_Str transformsLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Transforms"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
 
@@ -787,6 +800,7 @@ main() {
         prb_Str deps[] = {
             targetLibFile,
             codeGenLibFile,
+            transformsLibFile,
             analysisLibFile,
             clangDriverLibFile,
             windowsDriverLibFile,
