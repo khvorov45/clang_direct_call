@@ -318,8 +318,8 @@ main() {
     prb_createDirIfNotExists(tempArena, clangdcdir);
 
     prb_Str* clangRelevantFiles = 0;
-    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver/driver.cpp")));
 
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Option")));
@@ -337,6 +337,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/IRReader")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/AsmParser")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/DebugInfo/DWARF")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/DebugInfo/CodeView")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Bitstream/Reader")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Bitcode/Reader")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/WindowsDriver")));
@@ -349,8 +350,10 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/LiveDebugValues")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/SelectionDAG")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/GlobalISel")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/CodeGen/AsmPrinter")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Utils")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/ObjCARC")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Instrumentation")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -358,7 +361,12 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver/ToolChains")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Driver/ToolChains/Arch")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Basic")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Basic/Targets")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Frontend")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Edit")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Lex")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -456,6 +464,21 @@ main() {
                 prb_STR("X86GenFastISel.inc"),
                 prb_STR("X86GenSubtargetInfo.inc"),
                 prb_STR("X86GenMnemonicTables.inc"),
+                prb_STR("clang/Serialization/AttrPCHRead.inc"),
+                prb_STR("clang/Serialization/AttrPCHWrite.inc"),
+                prb_STR("clang/AST/AbstractTypeReader.inc"),
+                prb_STR("clang/AST/AbstractTypeWriter.inc"),
+                prb_STR("clang/AST/AbstractBasicReader.inc"),
+                prb_STR("clang/AST/AbstractBasicWriter.inc"),
+                prb_STR("clang/AST/CommentHTMLTags.inc"),
+                prb_STR("clang/AST/CommentHTMLNamedCharacterReferences.inc"),
+                prb_STR("clang/AST/AttrImpl.inc"),
+                prb_STR("clang/AST/CommentCommandInfo.inc"),
+                prb_STR("clang/AST/CommentHTMLTagsProperties.inc"),
+                prb_STR("clang/AST/CommentNodes.inc"),
+                prb_STR("clang/AST/AttrTextNodeDump.inc"),
+                prb_STR("clang/AST/AttrNodeTraverse.inc"),
+                prb_STR("AttrDocTable.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -497,6 +520,8 @@ main() {
                             || prb_streq(includedFile, prb_STR("a\\ b\\#c.h"))
                             || prb_streq(includedFile, prb_STR("x"))
                             || prb_streq(includedFile, prb_STR("FileName"))
+                            || prb_streq(includedFile, prb_STR("foo/bar.h"))
+                            || prb_streq(includedFile, prb_STR("a.h"))
                             || includedFile.len == 0;
 
                         prb_Str relevantPath = includedFile;
@@ -739,8 +764,23 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrSpellingListIndex.inc", "clang/include", "-gen-clang-attr-spelling-index"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrVisitor.inc", "clang/include", "-gen-clang-attr-ast-visitor"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_Attrs.inc", "clang/include", "-gen-clang-attr-classes"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Serialization_AttrPCHRead.inc", "clang/include", "-gen-clang-attr-pch-read"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Serialization_AttrPCHWrite.inc", "clang/include", "-gen-clang-attr-pch-write"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_lib_AST_AttrDocTable.inc", "clang/include", "-gen-clang-attr-doc-table"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrNodeTraverse.inc", "clang/include", "-gen-clang-attr-node-traverse"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrTextNodeDump.inc", "clang/include", "-gen-clang-attr-text-node-dump"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrImpl.inc", "clang/include", "-gen-clang-attr-impl"},
+        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicWriter.inc", "clang/include", "-gen-clang-basic-writer"},
+        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicReader.inc", "clang/include", "-gen-clang-basic-reader"},
+        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeWriter.inc", "clang/include", "-gen-clang-type-writer"},
+        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeReader.inc", "clang/include", "-gen-clang-type-reader"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLNamedCharacterReferences.td", "clang_include_clang_AST_CommentHTMLNamedCharacterReferences.inc", "clang/include", "-gen-clang-comment-html-named-character-references"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandInfo.inc", "clang/include", "-gen-clang-comment-command-info"},
         {clangTableGenExe, "clang/include/clang/Basic/TypeNodes.td", "clang_include_clang_AST_TypeNodes.inc", "clang/include", "-gen-clang-type-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/DeclNodes.td", "clang_include_clang_AST_DeclNodes.inc", "clang/include", "-gen-clang-decl-nodes"},
+        {clangTableGenExe, "clang/include/clang/Basic/CommentNodes.td", "clang_include_clang_AST_CommentNodes.inc", "clang/include", "-gen-clang-comment-nodes"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTags.inc", "clang/include", "-gen-clang-comment-html-tags"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTagsProperties.inc", "clang/include", "-gen-clang-comment-html-tags-properties"},
         {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandList.inc", "clang/include", "-gen-clang-comment-command-list"},
         {clangTableGenExe, "clang/include/clang/StaticAnalyzer/Checkers/Checkers.td", "clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc", "clang/include/clang/StaticAnalyzer/Checkers", "-gen-clang-sa-checkers"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
@@ -753,7 +793,7 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
     };
 
-    if (true) {
+    {
         prb_TempMemory   temp = prb_beginTempMemory(tempArena);
         RunTableGenSpec* tableGenSpecs = prb_arenaAllocArray(tempArena, RunTableGenSpec, prb_arrayCount(tableGenArgs));
         prb_Job*         jobs = 0;
@@ -775,7 +815,7 @@ main() {
     // TODO(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
     prb_Str targetParserLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TargetParser"));
-    prb_Str mcLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_MC"));
+    prb_Str mcLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_MC"));
     prb_Str profileDataLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_ProfileData"));
     prb_Str demangleLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Demangle"));
     prb_Str debugInfoLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_DebugInfo"));
@@ -796,20 +836,22 @@ main() {
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
     prb_Str clangFrontendLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Frontend"));
+    prb_Str clangEditLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Edit"));
+    prb_Str clangLexLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Lex"));
+    prb_Str clangASTLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_AST"));
+    prb_Str clangSerializationLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Serialization"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
 
-        prb_Str srcFiles[] = {
-            prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_tools_driver_driver.cpp")),
-        };
-
-        prb_Str outdir = prb_pathJoin(tempArena, builddir, prb_STR("clang"));
-        prb_assert(prb_clearDir(tempArena, outdir));
-        prb_Str objs = compileObjs(tempArena, outdir, srcFiles, prb_arrayCount(srcFiles));
+        prb_Str objs = compileObjsThatStartWith(tempArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"));
 
         prb_Str deps[] = {
             clangFrontendLibFile,
+            clangSerializationLibFile,
+            clangASTLibFile,
+            clangEditLibFile,
+            clangLexLibFile,
             targetLibFile,
             codeGenLibFile,
             transformsLibFile,
