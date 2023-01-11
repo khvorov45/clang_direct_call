@@ -354,6 +354,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Utils")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/ObjCARC")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Instrumentation")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Frontend/OpenMP")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Support")));
@@ -366,6 +367,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Edit")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Lex")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST/Interp")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
@@ -479,6 +481,7 @@ main() {
                 prb_STR("clang/AST/AttrTextNodeDump.inc"),
                 prb_STR("clang/AST/AttrNodeTraverse.inc"),
                 prb_STR("AttrDocTable.inc"),
+                prb_STR("Opcodes.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -791,6 +794,7 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-sve-builtins"},
         {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtins.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtins"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
+        {clangTableGenExe, "clang/lib/AST/Interp/Opcodes.td", "clang_lib_AST_Interp_Opcodes.inc", "clang/include", "-gen-clang-opcodes"},
     };
 
     {
@@ -832,6 +836,7 @@ main() {
     prb_Str targetLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Target"));
     prb_Str analysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Analysis"));
     prb_Str codeGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_CodeGen"));
+    prb_Str frontendLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Frontend"));
     prb_Str transformsLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Transforms"));
     prb_Str clangDriverLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Driver"));
     prb_Str clangBasicLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Basic"));
@@ -850,6 +855,7 @@ main() {
             clangFrontendLibFile,
             clangSerializationLibFile,
             clangASTLibFile,
+            frontendLibFile,
             clangEditLibFile,
             clangLexLibFile,
             targetLibFile,
