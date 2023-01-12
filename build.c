@@ -639,9 +639,16 @@ main() {
         prb_endTempMemory(temp);
     }
 
-    prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
-
     // TODO(khvorov) Generate the files we don't need table gen for
+    {
+        prb_Str clangEntryPointFile = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_tools_driver_clang-driver.cpp"));
+        prb_Str clangEntryPointContent = prb_STR(
+            "int clang_main(int argc, char **argv);\n"
+            "int main(int argc, char **argv) { return clang_main(argc, argv); }"
+        );
+        prb_assert(prb_writeEntireFile(tempArena, clangEntryPointFile, clangEntryPointContent.ptr, clangEntryPointContent.len));
+    }
+
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
         prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_include_clang_Config_config.h"));
@@ -763,6 +770,8 @@ main() {
         prb_STR("llvm/include/llvm/Config/TargetMCAs.def.in"),
         prb_STR("llvm_include_llvm_Config_TargetMCAs.def")
     );
+
+    prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
 
     // NOTE(khvorov) Static libs we need for tablegen
     prb_Str supportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
