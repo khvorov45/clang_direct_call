@@ -359,6 +359,8 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Utils")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/ObjCARC")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Instrumentation")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/Scalar")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Transforms/CFGuard")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Frontend/OpenMP")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/utils/TableGen/GlobalISel")));
@@ -373,10 +375,12 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Lex")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST/Interp")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/ASTMatchers")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Sema")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Analysis")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Parse")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/CodeGen")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -414,6 +418,7 @@ main() {
                 prb_STR("clang/AST/TypeNodes.inc"),
                 prb_STR("clang/Basic/AttrList.inc"),
                 prb_STR("llvm/Frontend/OpenMP/OMP.inc"),
+                prb_STR("llvm/Support/Extension.def"),
                 prb_STR("clang/include/clang/AST/CommentCommandList.inc"),
                 prb_STR("clang/AST/CommentCommandList.inc"),
                 prb_STR("clang/Basic/Version.inc"),
@@ -464,6 +469,7 @@ main() {
                 prb_STR("llvm/IR/IntrinsicsXCore.h"),
                 prb_STR("llvm/IR/IntrinsicImpl.inc"),
                 prb_STR("llvm/IR/IntrinsicEnums.inc"),
+                prb_STR("llvm/IR/IntrinsicsLoongArch.h"),
                 prb_STR("X86GenRegisterBank.inc"),
                 prb_STR("X86GenDAGISel.inc"),
                 prb_STR("X86GenCallingConv.inc"),
@@ -495,10 +501,14 @@ main() {
                 prb_STR("OpenCLBuiltins.inc"),
                 prb_STR("clang/Basic/arm_mve_builtin_aliases.inc"),
                 prb_STR("clang/Basic/arm_mve_builtin_sema.inc"),
+                prb_STR("clang/Basic/arm_mve_builtin_cg.inc"),
                 prb_STR("clang/Basic/arm_cde_builtin_aliases.inc"),
                 prb_STR("clang/Basic/arm_cde_builtin_sema.inc"),
+                prb_STR("clang/Basic/arm_cde_builtin_cg.inc"),
                 prb_STR("clang/Basic/arm_sve_sema_rangechecks.inc"),
+                prb_STR("clang/Basic/arm_sve_builtin_cg.inc"),
                 prb_STR("clang/Basic/riscv_vector_builtin_sema.inc"),
+                prb_STR("clang/Basic/riscv_vector_builtin_cg.inc"),
                 prb_STR("clang/AST/StmtDataCollectors.inc"),
                 prb_STR("clang/Parse/AttrParserStringSwitches.inc"),
                 prb_STR("clang/Parse/AttrSubMatchRulesParserStringSwitches.inc"),
@@ -687,6 +697,14 @@ main() {
         prb_endTempMemory(temp);
     }
 
+    {
+        prb_TempMemory temp = prb_beginTempMemory(tempArena);
+        prb_Str        outpath = prb_pathJoin(tempArena, clangdcdir, prb_STR("llvm_include_llvm_Support_Extension.def"));
+        prb_Str        content = prb_STR("//extension handlers\n#undef HANDLE_EXTENSION\n");
+        prb_assert(prb_writeEntireFile(tempArena, outpath, content.ptr, content.len));
+        prb_endTempMemory(temp);
+    }
+
     writeTargetDef(
         tempArena,
         llvmRootDir,
@@ -728,7 +746,7 @@ main() {
     );
 
     // NOTE(khvorov) Static libs we need for tablegen
-    prb_Str supportLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
+    prb_Str supportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
     prb_Str clangSupportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Support"));
     prb_Str tableGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TableGen"));
 
@@ -762,6 +780,7 @@ main() {
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicsVE.h", "llvm/include", "-gen-intrinsic-enums -intrinsic-prefix=ve"},
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicsXCore.h", "llvm/include", "-gen-intrinsic-enums -intrinsic-prefix=xcore"},
         {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicImpl.inc", "llvm/include", "-gen-intrinsic-impl"},
+        {llvmTableGenExe, "llvm/include/llvm/IR/Intrinsics.td", "llvm_include_llvm_IR_IntrinsicsLoongArch.h", "llvm/include", "-gen-intrinsic-enums -intrinsic-prefix=loongarch"},
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenRegisterInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-register-info"},
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenInstrInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-instr-info -instr-info-expand-mi-operand-info=0"},
         {llvmTableGenExe, "llvm/lib/Target/X86/X86.td", "X86GenSubtargetInfo.inc", "llvm/lib/Target/X86 llvm/include", "-gen-subtarget"},
@@ -816,12 +835,16 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-def"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtin_sema.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-sema"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtin_aliases.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-aliases"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtin_cg.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-codegen"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtins.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-def"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtin_sema.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-sema"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtin_aliases.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-aliases"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtin_cg.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-codegen"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-sve-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_builtin_cg.inc", "clang/include/clang/Basic", "-gen-arm-sve-builtin-codegen"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_sema_rangechecks.inc", "clang/include/clang/Basic", "-gen-arm-sve-sema-rangechecks"},
         {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtins.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtin_cg.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtin-codegen"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
         {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicWriter.inc", "clang/include", "-gen-clang-basic-writer"},
         {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicReader.inc", "clang/include", "-gen-clang-basic-reader"},
@@ -889,6 +912,8 @@ main() {
     prb_Str clangSemaLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Sema"));
     prb_Str clangAnalysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Analysis"));
     prb_Str clangParseLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Parse"));
+    prb_Str clangASTMatchersLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_ASTMatchers"));
+    prb_Str clangCodeGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_CodeGen"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -896,11 +921,13 @@ main() {
         prb_Str objs = compileObjsThatStartWith(tempArena, builddir, allFilesInSrc, prb_STR("clang_tools_driver"));
 
         prb_Str deps[] = {
+            clangCodeGenLibFile,
             clangFrontendLibFile,
             clangParseLibFile,
             clangSerializationLibFile,
             clangSemaLibFile,
             clangAnalysisLibFile,
+            clangASTMatchersLibFile,
             clangSupportLibFile,
             clangASTLibFile,
             frontendLibFile,
