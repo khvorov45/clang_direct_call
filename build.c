@@ -371,6 +371,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Sema")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Analysis")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Parse")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -494,6 +495,8 @@ main() {
                 prb_STR("clang/Basic/arm_sve_sema_rangechecks.inc"),
                 prb_STR("clang/Basic/riscv_vector_builtin_sema.inc"),
                 prb_STR("clang/AST/StmtDataCollectors.inc"),
+                prb_STR("clang/Parse/AttrParserStringSwitches.inc"),
+                prb_STR("clang/Parse/AttrSubMatchRulesParserStringSwitches.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -796,6 +799,8 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrImpl.inc", "clang/include", "-gen-clang-attr-impl"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrImpl.inc", "clang/include", "-gen-clang-attr-parsed-attr-impl"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrTemplateInstantiate.inc", "clang/include", "-gen-clang-attr-template-instantiate"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Parse_AttrParserStringSwitches.inc", "clang/include", "-gen-clang-attr-parser-string-switches"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Parse_AttrSubMatchRulesParserStringSwitches.inc", "clang/include", "-gen-clang-attr-subject-match-rules-parser-string-switches"},
         {clangTableGenExe, "clang/include/clang/Basic/TypeNodes.td", "clang_include_clang_AST_TypeNodes.inc", "clang/include", "-gen-clang-type-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/DeclNodes.td", "clang_include_clang_AST_DeclNodes.inc", "clang/include", "-gen-clang-decl-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/CommentNodes.td", "clang_include_clang_AST_CommentNodes.inc", "clang/include", "-gen-clang-comment-nodes"},
@@ -878,6 +883,7 @@ main() {
     prb_Str clangSerializationLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Serialization"));
     prb_Str clangSemaLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Sema"));
     prb_Str clangAnalysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Analysis"));
+    prb_Str clangParseLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Parse"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -886,6 +892,7 @@ main() {
 
         prb_Str deps[] = {
             clangFrontendLibFile,
+            clangParseLibFile,
             clangSerializationLibFile,
             clangSemaLibFile,
             clangAnalysisLibFile,
