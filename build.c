@@ -368,6 +368,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Lex")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST/Interp")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Sema")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
@@ -482,6 +483,15 @@ main() {
                 prb_STR("clang/AST/AttrNodeTraverse.inc"),
                 prb_STR("AttrDocTable.inc"),
                 prb_STR("Opcodes.inc"),
+                prb_STR("clang/Sema/AttrParsedAttrImpl.inc"),
+                prb_STR("clang/Sema/AttrTemplateInstantiate.inc"),
+                prb_STR("OpenCLBuiltins.inc"),
+                prb_STR("clang/Basic/arm_mve_builtin_aliases.inc"),
+                prb_STR("clang/Basic/arm_mve_builtin_sema.inc"),
+                prb_STR("clang/Basic/arm_cde_builtin_aliases.inc"),
+                prb_STR("clang/Basic/arm_cde_builtin_sema.inc"),
+                prb_STR("clang/Basic/arm_sve_sema_rangechecks.inc"),
+                prb_STR("clang/Basic/riscv_vector_builtin_sema.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -516,7 +526,16 @@ main() {
                         prb_Str includedFile = scanner.betweenLastMatches;
                         bool    isX86Inc = prb_strStartsWith(includedFile, prb_STR("X86Gen")) && prb_strEndsWith(includedFile, prb_STR(".inc"));
 
-                        bool ignore = prb_strStartsWith(includedFile, prb_STR("google"))
+                        prb_Str includeLine = {};
+                        {
+                            prb_StrScanner scannerCopy = scanner;
+                            prb_assert(prb_strScannerMove(&scannerCopy, (prb_StrFindSpec) {.mode = prb_StrFindMode_LineBreak}, prb_StrScannerSide_AfterMatch));
+                            prb_assert(prb_strScannerMove(&scannerCopy, (prb_StrFindSpec) {.mode = prb_StrFindMode_LineBreak, .direction = prb_StrDirection_FromEnd}, prb_StrScannerSide_BeforeMatch));
+                            includeLine = prb_strTrim(scannerCopy.betweenLastMatches);
+                        }
+
+                        bool ignore = prb_strStartsWith(includeLine, prb_STR("//"))
+                            || prb_strStartsWith(includedFile, prb_STR("google"))
                             || prb_strStartsWith(includedFile, prb_STR("tensorflow"))
                             || prb_streq(includedFile, prb_STR("InlinerSizeModel.h"))
                             || prb_streq(includedFile, prb_STR("RegallocEvictModel.h"))
@@ -773,6 +792,10 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrNodeTraverse.inc", "clang/include", "-gen-clang-attr-node-traverse"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrTextNodeDump.inc", "clang/include", "-gen-clang-attr-text-node-dump"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrImpl.inc", "clang/include", "-gen-clang-attr-impl"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrImpl.inc", "clang/include", "-gen-clang-attr-parsed-attr-impl"},
+        {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrTemplateInstantiate.inc", "clang/include", "-gen-clang-attr-template-instantiate"},
+        {clangTableGenExe, "clang/lib/Sema/OpenCLBuiltins.td", "clang_lib_Sema_OpenCLBuiltins.inc", "clang/include", "-gen-clang-opencl-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtin_sema.inc", "clang/include", "-gen-riscv-vector-builtin-sema"},
         {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicWriter.inc", "clang/include", "-gen-clang-basic-writer"},
         {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicReader.inc", "clang/include", "-gen-clang-basic-reader"},
         {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeWriter.inc", "clang/include", "-gen-clang-type-writer"},
@@ -790,8 +813,13 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.h", "clang/include/clang/Basic", "-gen-arm-neon"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_fp16.td", "clang_include_clang_Basic_arm_fp16.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-def"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtin_sema.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-sema"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_mve.td", "clang_include_clang_Basic_arm_mve_builtin_aliases.inc", "clang/include/clang/Basic", "-gen-arm-mve-builtin-aliases"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtins.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-def"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtin_sema.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-sema"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_cde.td", "clang_include_clang_Basic_arm_cde_builtin_aliases.inc", "clang/include/clang/Basic", "-gen-arm-cde-builtin-aliases"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_builtins.inc", "clang/include/clang/Basic", "-gen-arm-sve-builtins"},
+        {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_sema_rangechecks.inc", "clang/include/clang/Basic", "-gen-arm-sve-sema-rangechecks"},
         {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtins.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtins"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
         {clangTableGenExe, "clang/lib/AST/Interp/Opcodes.td", "clang_lib_AST_Interp_Opcodes.inc", "clang/include", "-gen-clang-opcodes"},
@@ -845,6 +873,7 @@ main() {
     prb_Str clangLexLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Lex"));
     prb_Str clangASTLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_AST"));
     prb_Str clangSerializationLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Serialization"));
+    prb_Str clangSemaLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Sema"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -854,6 +883,7 @@ main() {
         prb_Str deps[] = {
             clangFrontendLibFile,
             clangSerializationLibFile,
+            clangSemaLibFile,
             clangASTLibFile,
             frontendLibFile,
             clangEditLibFile,
