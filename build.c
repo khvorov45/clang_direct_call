@@ -65,7 +65,8 @@ compileObjs(prb_Arena* arena, prb_Str outdir, prb_Str* srcFiles, i32 srcFileCoun
             "-DC_INCLUDE_DIRS=\"\" -DCLANG_DEFAULT_PIE_ON_LINUX=1 -DCLANG_DEFAULT_OBJCOPY=\"objcopy\" -DGCC_INSTALL_PREFIX=\"\" "
             "-DLLVM_VERSION_STRING=\"420.69\" -DCLANG_OPENMP_NVPTX_DEFAULT_ARCH=\"sm_35\" "
             "-DCLANG_SYSTEMZ_DEFAULT_ARCH=\"z10\" -DLLVM_ENABLE_ABI_BREAKING_CHECKS=1 -DLLVM_VERSION_MAJOR=69 "
-            "-DLLVM_VERSION_MINOR=420 -DLLVM_VERSION_PATCH=1337"
+            "-DLLVM_VERSION_MINOR=420 -DLLVM_VERSION_PATCH=1337 "
+            "-DBLAKE3_NO_AVX512=1 -DBLAKE3_NO_AVX2 -DBLAKE3_NO_SSE41 -DBLAKE3_NO_SSE2"
         );
         prb_Str flags = prb_STR("-std=c++17");
         if (prb_strEndsWith(path, prb_STR(".c"))) {
@@ -318,6 +319,10 @@ main() {
     prb_createDirIfNotExists(tempArena, clangdcdir);
 
     prb_Str* clangRelevantFiles = 0;
+
+    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support/BLAKE3/blake3.c")));
+    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support/BLAKE3/blake3_portable.c")));
+    arrput(clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support/BLAKE3/blake3_dispatch.c")));
 
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/tools/driver")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("llvm/lib/Support")));
@@ -605,6 +610,8 @@ main() {
         prb_endTempMemory(temp);
     }
 
+    prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
+
     // TODO(khvorov) Generate the files we don't need table gen for
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -720,10 +727,8 @@ main() {
         prb_STR("llvm_include_llvm_Config_TargetMCAs.def")
     );
 
-    prb_Str* allFilesInSrc = prb_getAllDirEntries(permArena, clangdcdir, prb_Recursive_No);
-
     // NOTE(khvorov) Static libs we need for tablegen
-    prb_Str supportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
+    prb_Str supportLibFile = compileStaticLib(Skip_No, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Support"));
     prb_Str clangSupportLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Support"));
     prb_Str tableGenLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TableGen"));
 
