@@ -370,6 +370,7 @@ main() {
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/AST/Interp")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Sema")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Serialization")));
+    addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/lib/Analysis")));
     addAllSrcFiles(permArena, &clangRelevantFiles, prb_pathJoin(permArena, llvmRootDir, prb_STR("clang/utils/TableGen")));
 
     NewpathOgpath* newpaths = 0;
@@ -492,6 +493,7 @@ main() {
                 prb_STR("clang/Basic/arm_cde_builtin_sema.inc"),
                 prb_STR("clang/Basic/arm_sve_sema_rangechecks.inc"),
                 prb_STR("clang/Basic/riscv_vector_builtin_sema.inc"),
+                prb_STR("clang/AST/StmtDataCollectors.inc"),
             };
 
             i32 newpathIndex = shgeti(newpaths, newpath.ptr);
@@ -794,21 +796,10 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_AST_AttrImpl.inc", "clang/include", "-gen-clang-attr-impl"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrParsedAttrImpl.inc", "clang/include", "-gen-clang-attr-parsed-attr-impl"},
         {clangTableGenExe, "clang/include/clang/Basic/Attr.td", "clang_include_clang_Sema_AttrTemplateInstantiate.inc", "clang/include", "-gen-clang-attr-template-instantiate"},
-        {clangTableGenExe, "clang/lib/Sema/OpenCLBuiltins.td", "clang_lib_Sema_OpenCLBuiltins.inc", "clang/include", "-gen-clang-opencl-builtins"},
-        {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtin_sema.inc", "clang/include", "-gen-riscv-vector-builtin-sema"},
-        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicWriter.inc", "clang/include", "-gen-clang-basic-writer"},
-        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicReader.inc", "clang/include", "-gen-clang-basic-reader"},
-        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeWriter.inc", "clang/include", "-gen-clang-type-writer"},
-        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeReader.inc", "clang/include", "-gen-clang-type-reader"},
-        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLNamedCharacterReferences.td", "clang_include_clang_AST_CommentHTMLNamedCharacterReferences.inc", "clang/include", "-gen-clang-comment-html-named-character-references"},
-        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandInfo.inc", "clang/include", "-gen-clang-comment-command-info"},
         {clangTableGenExe, "clang/include/clang/Basic/TypeNodes.td", "clang_include_clang_AST_TypeNodes.inc", "clang/include", "-gen-clang-type-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/DeclNodes.td", "clang_include_clang_AST_DeclNodes.inc", "clang/include", "-gen-clang-decl-nodes"},
         {clangTableGenExe, "clang/include/clang/Basic/CommentNodes.td", "clang_include_clang_AST_CommentNodes.inc", "clang/include", "-gen-clang-comment-nodes"},
-        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTags.inc", "clang/include", "-gen-clang-comment-html-tags"},
-        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTagsProperties.inc", "clang/include", "-gen-clang-comment-html-tags-properties"},
-        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandList.inc", "clang/include", "-gen-clang-comment-command-list"},
-        {clangTableGenExe, "clang/include/clang/StaticAnalyzer/Checkers/Checkers.td", "clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc", "clang/include/clang/StaticAnalyzer/Checkers", "-gen-clang-sa-checkers"},
+        {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtin_sema.inc", "clang/include", "-gen-riscv-vector-builtin-sema"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_neon.td", "clang_include_clang_Basic_arm_neon.h", "clang/include/clang/Basic", "-gen-arm-neon"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_fp16.td", "clang_include_clang_Basic_arm_fp16.inc", "clang/include/clang/Basic", "-gen-arm-neon-sema"},
@@ -822,6 +813,18 @@ main() {
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_sema_rangechecks.inc", "clang/include/clang/Basic", "-gen-arm-sve-sema-rangechecks"},
         {clangTableGenExe, "clang/include/clang/Basic/riscv_vector.td", "clang_include_clang_Basic_riscv_vector_builtins.inc", "clang/include/clang/Basic", "-gen-riscv-vector-builtins"},
         {clangTableGenExe, "clang/include/clang/Basic/arm_sve.td", "clang_include_clang_Basic_arm_sve_typeflags.inc", "clang/include/clang/Basic", "-gen-arm-sve-typeflags"},
+        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicWriter.inc", "clang/include", "-gen-clang-basic-writer"},
+        {clangTableGenExe, "clang/include/clang/AST/PropertiesBase.td", "clang_include_clang_AST_AbstractBasicReader.inc", "clang/include", "-gen-clang-basic-reader"},
+        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeWriter.inc", "clang/include", "-gen-clang-type-writer"},
+        {clangTableGenExe, "clang/include/clang/AST/TypeProperties.td", "clang_include_clang_AST_AbstractTypeReader.inc", "clang/include", "-gen-clang-type-reader"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLNamedCharacterReferences.td", "clang_include_clang_AST_CommentHTMLNamedCharacterReferences.inc", "clang/include", "-gen-clang-comment-html-named-character-references"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandInfo.inc", "clang/include", "-gen-clang-comment-command-info"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTags.inc", "clang/include", "-gen-clang-comment-html-tags"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentHTMLTags.td", "clang_include_clang_AST_CommentHTMLTagsProperties.inc", "clang/include", "-gen-clang-comment-html-tags-properties"},
+        {clangTableGenExe, "clang/include/clang/AST/CommentCommands.td", "clang_include_clang_AST_CommentCommandList.inc", "clang/include", "-gen-clang-comment-command-list"},
+        {clangTableGenExe, "clang/include/clang/AST/StmtDataCollectors.td", "clang_include_clang_AST_StmtDataCollectors.inc", "clang/include", "-gen-clang-data-collectors"},
+        {clangTableGenExe, "clang/include/clang/StaticAnalyzer/Checkers/Checkers.td", "clang_include_clang_StaticAnalyzer_Checkers_Checkers.inc", "clang/include/clang/StaticAnalyzer/Checkers", "-gen-clang-sa-checkers"},
+        {clangTableGenExe, "clang/lib/Sema/OpenCLBuiltins.td", "clang_lib_Sema_OpenCLBuiltins.inc", "clang/include", "-gen-clang-opencl-builtins"},
         {clangTableGenExe, "clang/lib/AST/Interp/Opcodes.td", "clang_lib_AST_Interp_Opcodes.inc", "clang/include", "-gen-clang-opcodes"},
     };
 
@@ -874,6 +877,7 @@ main() {
     prb_Str clangASTLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_AST"));
     prb_Str clangSerializationLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Serialization"));
     prb_Str clangSemaLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Sema"));
+    prb_Str clangAnalysisLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_lib_Analysis"));
 
     {
         prb_TempMemory temp = prb_beginTempMemory(tempArena);
@@ -884,6 +888,8 @@ main() {
             clangFrontendLibFile,
             clangSerializationLibFile,
             clangSemaLibFile,
+            clangAnalysisLibFile,
+            clangSupportLibFile,
             clangASTLibFile,
             frontendLibFile,
             clangEditLibFile,
