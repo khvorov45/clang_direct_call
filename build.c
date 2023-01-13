@@ -641,7 +641,7 @@ main() {
         prb_endTempMemory(temp);
     }
 
-    // TODO(khvorov) Generate the files we don't need table gen for
+    // NOTE(khvorov) Generate the files we don't need table gen for
     if (false) {
         prb_Str clangEntryPointFile = prb_pathJoin(tempArena, clangdcdir, prb_STR("clang_tools_driver_clang-driver.cpp"));
         prb_Str clangEntryPointContent = prb_STR(
@@ -786,7 +786,7 @@ main() {
     prb_Str llvmTableGenExe = compileExe(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_utils_TableGen"), depsOfTablegen);
     prb_Str clangTableGenExe = compileExe(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("clang_utils_TableGen"), depsOfTablegen);
 
-    // TODO(khvorov) Generate the files we need table gen for
+    // NOTE(khvorov) Generate the files we need table gen for
     TableGenArgs tableGenArgs[] = {
         {llvmTableGenExe, "clang/include/clang/Driver/Options.td", "clang_include_clang_Driver_Options.inc", "llvm/include", "-gen-opt-parser-defs"},
         {llvmTableGenExe, "llvm/include/llvm/Frontend/OpenMP/OMP.td", "llvm_include_llvm_Frontend_OpenMP_OMP.h.inc", "llvm/include", "--gen-directive-decl"},
@@ -911,7 +911,7 @@ main() {
         prb_endTempMemory(temp);
     }
 
-    // TODO(khvorov) Compile the actual compiler
+    // NOTE(khvorov) Compile the actual compiler
     prb_Str optionLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_Option"));
     prb_Str targetParserLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_TargetParser"));
     prb_Str mcLibFile = compileStaticLib(Skip_Yes, permArena, builddir, allFilesInSrc, prb_STR("llvm_lib_MC"));
