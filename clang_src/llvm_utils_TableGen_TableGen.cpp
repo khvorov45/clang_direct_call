@@ -12,7 +12,6 @@
 
 #include "llvm_utils_TableGen_TableGenBackends.h" // Declares all backends.
 #include "llvm_include_llvm_Support_CommandLine.h"
-#include "llvm_include_llvm_Support_InitLLVM.h"
 #include "llvm_include_llvm_TableGen_Main.h"
 #include "llvm_include_llvm_TableGen_Record.h"
 #include "llvm_include_llvm_TableGen_SetTheory.h"
@@ -284,14 +283,8 @@ bool LLVMTableGenMain(raw_ostream &OS, RecordKeeper &Records) {
 }
 }
 
-// int printf(const char* fmt, ...);
 int main(int argc, char **argv) {
-  // for (int ind = 0; ind < argc; ind++) {
-  //   printf("%s\n", argv[ind]);
-  // }
-  InitLLVM X(argc, argv);
   cl::ParseCommandLineOptions(argc, argv);
-
   return TableGenMain(argv[0], &LLVMTableGenMain);
 }
 

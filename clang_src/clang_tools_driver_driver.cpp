@@ -36,7 +36,6 @@
 #include "llvm_include_llvm_Support_ErrorHandling.h"
 #include "llvm_include_llvm_Support_FileSystem.h"
 #include "llvm_include_llvm_Support_Host.h"
-#include "llvm_include_llvm_Support_InitLLVM.h"
 #include "llvm_include_llvm_Support_Path.h"
 #include "llvm_include_llvm_Support_PrettyStackTrace.h"
 #include "llvm_include_llvm_Support_Process.h"
@@ -343,7 +342,6 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
 
 extern "C" int
 clang_main(int Argc, char** Argv) {
-    llvm::InitLLVM X(Argc, Argv);
     llvm::setBugReportMsg("PLEASE submit a bug report to " BUG_REPORT_URL
                           " and include the crash backtrace, preprocessed "
                           "source, and associated run script.\n");
