@@ -342,9 +342,6 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
 
 extern "C" int
 clang_main(int Argc, char** Argv) {
-    llvm::setBugReportMsg("PLEASE submit a bug report to " BUG_REPORT_URL
-                          " and include the crash backtrace, preprocessed "
-                          "source, and associated run script.\n");
     SmallVector<const char*, 256> Args(Argv, Argv + Argc);
 
     if (llvm::sys::Process::FixupStandardFileDescriptors())
@@ -559,10 +556,6 @@ clang_main(int Argc, char** Argv) {
         }
     }
 
-    // Print the bug report message that would be printed if we did actually
-    // crash, but only if we're crashing due to FORCE_CLANG_DIAGNOSTICS_CRASH.
-    if (::getenv("FORCE_CLANG_DIAGNOSTICS_CRASH"))
-        llvm::dbgs() << llvm::getBugReportMsg();
     if (FailingCommand != nullptr && TheDriver.maybeGenerateCompilationDiagnostics(CommandStatus, ReproLevel, *C, *FailingCommand))
         Res = 1;
 
