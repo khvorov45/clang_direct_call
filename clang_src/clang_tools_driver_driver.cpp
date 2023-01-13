@@ -14,7 +14,6 @@
 #include "clang_include_clang_Driver_Driver.h"
 #include "clang_include_clang_Basic_DiagnosticOptions.h"
 #include "clang_include_clang_Basic_HeaderInclude.h"
-#include "clang_include_clang_Basic_Stack.h"
 #include "clang_include_clang_Config_config.h"
 #include "clang_include_clang_Driver_Compilation.h"
 #include "clang_include_clang_Driver_DriverDiagnostic.h"

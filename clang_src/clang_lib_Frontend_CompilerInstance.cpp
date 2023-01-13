@@ -16,7 +16,6 @@
 #include "clang_include_clang_Basic_FileManager.h"
 #include "clang_include_clang_Basic_LangStandard.h"
 #include "clang_include_clang_Basic_SourceManager.h"
-#include "clang_include_clang_Basic_Stack.h"
 #include "clang_include_clang_Basic_TargetInfo.h"
 #include "clang_include_clang_Basic_Version.h"
 #include "clang_include_clang_Config_config.h"

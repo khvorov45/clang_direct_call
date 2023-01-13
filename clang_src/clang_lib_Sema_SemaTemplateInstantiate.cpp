@@ -22,7 +22,6 @@
 #include "clang_include_clang_AST_Type.h"
 #include "clang_include_clang_AST_TypeVisitor.h"
 #include "clang_include_clang_Basic_LangOptions.h"
-#include "clang_include_clang_Basic_Stack.h"
 #include "clang_include_clang_Basic_TargetInfo.h"
 #include "clang_include_clang_Sema_DeclSpec.h"
 #include "clang_include_clang_Sema_Initialization.h"
