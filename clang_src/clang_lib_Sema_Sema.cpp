@@ -498,11 +498,6 @@ void Sema::warnStackExhausted(SourceLocation Loc) {
   }
 }
 
-void Sema::runWithSufficientStackSpace(SourceLocation Loc,
-                                       llvm::function_ref<void()> Fn) {
-  Fn();
-}
-
 /// makeUnavailableInSystemHeader - There is an error in the current
 /// context.  If we're still in a system header, and we can plausibly
 /// make the relevant declaration unavailable instead of erroring, do

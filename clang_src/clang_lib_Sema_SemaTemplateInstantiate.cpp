@@ -2850,10 +2850,8 @@ bool Sema::SubstDefaultArgument(
         return true;
     }
 
-    runWithSufficientStackSpace(Loc, [&] {
-      Result = SubstInitializer(PatternExpr, TemplateArgs,
-                                /*DirectInit*/false);
-    });
+    Result = SubstInitializer(PatternExpr, TemplateArgs,
+                              /*DirectInit*/false);
   }
   if (Result.isInvalid())
     return true;
