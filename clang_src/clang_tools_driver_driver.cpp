@@ -342,50 +342,17 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
 
 extern "C" int
 clang_main(int Argc, char** Argv) {
-    SmallVector<const char*, 256> Args(Argv, Argv + Argc);
-
     if (llvm::sys::Process::FixupStandardFileDescriptors())
         return 1;
 
     llvm::InitializeAllTargets();
 
+    llvm::cl::TokenizerCallback Tokenizer = &llvm::cl::TokenizeGNUCommandLine;
+
     llvm::BumpPtrAllocator A;
-    llvm::StringSaver      Saver(A);
-
-    // Parse response files using the GNU syntax, unless we're in CL mode. There
-    // are two ways to put clang in CL compatibility mode: Args[0] is either
-    // clang-cl or cl, or --driver-mode=cl is on the command line. The normal
-    // command line parsing can't happen until after response file parsing, so we
-    // have to manually search for a --driver-mode=cl argument the hard way.
-    // Finally, our -cc1 tools don't care which tokenization mode we use because
-    // response files written by clang will tokenize the same way in either mode.
-    bool ClangCLMode =
-        IsClangCL(getDriverMode(Args[0], llvm::makeArrayRef(Args).slice(1)));
-    enum { Default,
-           POSIX,
-           Windows } RSPQuoting = Default;
-    for (const char* F : Args) {
-        if (strcmp(F, "--rsp-quoting=posix") == 0)
-            RSPQuoting = POSIX;
-        else if (strcmp(F, "--rsp-quoting=windows") == 0)
-            RSPQuoting = Windows;
-    }
-
-    // Determines whether we want nullptr markers in Args to indicate response
-    // files end-of-lines. We only use this for the /LINK driver argument with
-    // clang-cl.exe on Windows.
-    bool MarkEOLs = ClangCLMode;
-
-    llvm::cl::TokenizerCallback Tokenizer;
-    if (RSPQuoting == Windows || (RSPQuoting == Default && ClangCLMode))
-        Tokenizer = &llvm::cl::TokenizeWindowsCommandLine;
-    else
-        Tokenizer = &llvm::cl::TokenizeGNUCommandLine;
-
-    if (MarkEOLs && Args.size() > 1 && StringRef(Args[1]).startswith("-cc1"))
-        MarkEOLs = false;
     llvm::cl::ExpansionContext ECtx(A, Tokenizer);
-    ECtx.setMarkEOLs(MarkEOLs);
+    ECtx.setMarkEOLs(false);
+    SmallVector<const char*, 256> Args(Argv, Argv + Argc);
     if (llvm::Error Err = ECtx.expandResponseFiles(Args)) {
         llvm::errs() << toString(std::move(Err)) << '\n';
         return 1;
@@ -395,11 +362,6 @@ clang_main(int Argc, char** Argv) {
     // file.
     auto FirstArg = llvm::find_if(llvm::drop_begin(Args), [](const char* A) { return A != nullptr; });
     if (FirstArg != Args.end() && StringRef(*FirstArg).startswith("-cc1")) {
-        // If -cc1 came from a response file, remove the EOL sentinels.
-        if (MarkEOLs) {
-            auto newEnd = std::remove(Args.begin(), Args.end(), nullptr);
-            Args.resize(newEnd - Args.begin());
-        }
         return ExecuteCC1Tool(Args);
     }
 
@@ -414,29 +376,6 @@ clang_main(int Argc, char** Argv) {
             CanonicalPrefixes = true;
         else if (StringRef(Args[i]) == "-no-canonical-prefixes")
             CanonicalPrefixes = false;
-    }
-
-    // Handle CL and _CL_ which permits additional command line options to be
-    // prepended or appended.
-    if (ClangCLMode) {
-        // Arguments in "CL" are prepended.
-        std::optional<std::string> OptCL = llvm::sys::Process::GetEnv("CL");
-        if (OptCL) {
-            SmallVector<const char*, 8> PrependedOpts;
-            getCLEnvVarOptions(*OptCL, Saver, PrependedOpts);
-
-            // Insert right after the program name to prepend to the argument list.
-            Args.insert(Args.begin() + 1, PrependedOpts.begin(), PrependedOpts.end());
-        }
-        // Arguments in "_CL_" are appended.
-        std::optional<std::string> Opt_CL_ = llvm::sys::Process::GetEnv("_CL_");
-        if (Opt_CL_) {
-            SmallVector<const char*, 8> AppendedOpts;
-            getCLEnvVarOptions(*Opt_CL_, Saver, AppendedOpts);
-
-            // Insert at the end of the argument list to append.
-            Args.append(AppendedOpts.begin(), AppendedOpts.end());
-        }
     }
 
     std::set<std::string> SavedStrings;
