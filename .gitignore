@@ -2,3 +2,4 @@
 clang_src
 *.exe
 build
+tests
