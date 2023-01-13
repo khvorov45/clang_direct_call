@@ -201,40 +201,6 @@ private:
 };
 } // namespace
 
-std::error_code Process::FixupStandardFileDescriptors() {
-  int NullFD = -1;
-  FDCloser FDC(NullFD);
-  const int StandardFDs[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
-  for (int StandardFD : StandardFDs) {
-    struct stat st;
-    errno = 0;
-    if (RetryAfterSignal(-1, ::fstat, StandardFD, &st) < 0) {
-      assert(errno && "expected errno to be set if fstat failed!");
-      // fstat should return EBADF if the file descriptor is closed.
-      if (errno != EBADF)
-        return std::error_code(errno, std::generic_category());
-    }
-    // if fstat succeeds, move on to the next FD.
-    if (!errno)
-      continue;
-    assert(errno == EBADF && "expected errno to have EBADF at this point!");
-
-    if (NullFD < 0) {
-      // Call ::open in a lambda to avoid overload resolution in
-      // RetryAfterSignal when open is overloaded, such as in Bionic.
-      auto Open = [&]() { return ::open("/dev/null", O_RDWR); };
-      if ((NullFD = RetryAfterSignal(-1, Open)) < 0)
-        return std::error_code(errno, std::generic_category());
-    }
-
-    if (NullFD == StandardFD)
-      FDC.keepOpen();
-    else if (dup2(NullFD, StandardFD) < 0)
-      return std::error_code(errno, std::generic_category());
-  }
-  return std::error_code();
-}
-
 std::error_code Process::SafelyCloseFileDescriptor(int FD) {
   // Create a signal set filled with *all* signals.
   sigset_t FullSet, SavedSet;

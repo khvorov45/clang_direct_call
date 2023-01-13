@@ -342,9 +342,6 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
 
 extern "C" int
 clang_main(int Argc, char** Argv) {
-    if (llvm::sys::Process::FixupStandardFileDescriptors())
-        return 1;
-
     llvm::InitializeAllTargets();
 
     llvm::cl::TokenizerCallback Tokenizer = &llvm::cl::TokenizeGNUCommandLine;

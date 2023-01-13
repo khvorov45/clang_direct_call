@@ -114,12 +114,6 @@ public:
   FindInEnvPath(StringRef EnvName, StringRef FileName,
                 char Separator = EnvPathSeparator);
 
-  // This functions ensures that the standard file descriptors (input, output,
-  // and error) are properly mapped to a file descriptor before we use any of
-  // them.  This should only be called by standalone programs, library
-  // components should not call this.
-  static std::error_code FixupStandardFileDescriptors();
-
   // This function safely closes a file descriptor.  It is not safe to retry
   // close(2) when it returns with errno equivalent to EINTR; this is because
   // *nixen cannot agree if the file descriptor is, in fact, closed when this
