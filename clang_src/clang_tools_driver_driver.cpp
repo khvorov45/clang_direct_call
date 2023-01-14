@@ -292,17 +292,60 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
     return 1;
 }
 
+#define mdc_assert assert
+
+bool mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
+    mdc_assert(bytes >= 0);
+    bool result = true;
+    for (intptr_t index = 0; index < bytes; index++) {
+        if (((uint8_t*)ptr1)[index] != ((uint8_t*)ptr2)[index]) {
+            result = false;
+            break;
+        }
+    }
+    return result;
+}
+
+// clang-format off
+#define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
+// clang-format on
+
+typedef struct mdc_Str {
+    const char* ptr;
+    intptr_t    len;
+} mdc_Str;
+
+intptr_t
+mdc_strlen(const char* str) {
+    intptr_t result = 0;
+    if (str) {
+        while (str[result] != '\0') {
+            result += 1;
+        }
+    }
+    return result;
+}
+
+bool
+mdc_strStartsWith(mdc_Str str, mdc_Str pattern) {
+    bool result = false;
+    if (pattern.len <= str.len) {
+        result = mdc_memeq(str.ptr, pattern.ptr, pattern.len);
+    }
+    return result;
+}
+
 extern "C" int
-clang_main(int Argc, char** Argv) {
+clang_main(int argc, char** argv) {
     llvm::InitializeAllTargets();
 
-    SmallVector<const char*, 256> Args(Argv, Argv + Argc);
+    SmallVector<const char*, 256> Args(argv, argv + argc);
 
     // Handle -cc1 integrated tools, even if -cc1 was expanded from a response
     // file.
-    {
-        auto FirstArg = llvm::find_if(llvm::drop_begin(Args), [](const char* A) { return A != nullptr; });
-        if (FirstArg != Args.end() && StringRef(*FirstArg).startswith("-cc1")) {
+    if (argc >= 2) {
+        mdc_Str firstArg = mdc_STR(argv[1]);
+        if (mdc_strStartsWith(firstArg, mdc_STR("-cc1"))) {
             return ExecuteCC1Tool(Args);
         }
     }
