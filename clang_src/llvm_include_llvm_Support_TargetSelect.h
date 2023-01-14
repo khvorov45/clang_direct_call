@@ -15,6 +15,8 @@
 #ifndef LLVM_SUPPORT_TARGETSELECT_H
 #define LLVM_SUPPORT_TARGETSELECT_H
 
+#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
+#include "llvm_include_llvm_MC_TargetRegistry.h"
 #include "llvm_include_llvm_Config_llvm-config.h"
 
 extern "C" {
@@ -34,8 +36,7 @@ extern "C" {
 #include "llvm_include_llvm_Config_AsmPrinters.def"
 
   // Declare all of the available assembly parser initialization functions.
-#define LLVM_ASM_PARSER(TargetName) void LLVMInitialize##TargetName##AsmParser();
-#include "llvm_include_llvm_Config_AsmParsers.def"
+  void LLVMInitializeX86AsmParser();
 
   // Declare all of the available disassembler initialization functions.
 #define LLVM_DISASSEMBLER(TargetName) \
@@ -48,14 +49,15 @@ extern "C" {
 }
 
 namespace llvm {
+
   /// InitializeAllTargetInfos - The main program should call this function if
   /// it wants access to all available targets that LLVM is configured to
   /// support, to make them available via the TargetRegistry.
   ///
   /// It is legal for a client to make multiple calls to this function.
   inline void InitializeAllTargetInfos() {
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##TargetInfo();
-#include "llvm_include_llvm_Config_Targets.def"
+    RegisterTarget<Triple::x86, /*HasJIT=*/true> X(getTheX86_32Target(), "x86", "32-bit X86: Pentium-Pro and above", "X86");
+    RegisterTarget<Triple::x86_64, /*HasJIT=*/true> Y(getTheX86_64Target(), "x86-64", "64-bit X86: EM64T and AMD64", "X86");
   }
 
   /// InitializeAllTargets - The main program should call this function if it
@@ -66,9 +68,7 @@ namespace llvm {
   inline void InitializeAllTargets() {
     // FIXME: Remove this, clients should do it.
     InitializeAllTargetInfos();
-
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##Target();
-#include "llvm_include_llvm_Config_Targets.def"
+    LLVMInitializeX86Target();
   }
 
   /// InitializeAllTargetMCs - The main program should call this function if it
@@ -97,8 +97,7 @@ namespace llvm {
   ///
   /// It is legal for a client to make multiple calls to this function.
   inline void InitializeAllAsmParsers() {
-#define LLVM_ASM_PARSER(TargetName) LLVMInitialize##TargetName##AsmParser();
-#include "llvm_include_llvm_Config_AsmParsers.def"
+    LLVMInitializeX86AsmParser();
   }
 
   /// InitializeAllDisassemblers - The main program should call this function if
