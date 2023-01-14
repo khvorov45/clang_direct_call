@@ -231,44 +231,6 @@ checkEnvVar(const char* EnvOptSet, const char* EnvOptFile, std::string& OptFile)
     return OptVal;
 }
 
-static bool
-SetBackdoorDriverOutputsFromEnvVars(Driver& TheDriver) {
-    TheDriver.CCPrintOptions =
-        checkEnvVar<bool>("CC_PRINT_OPTIONS", "CC_PRINT_OPTIONS_FILE", TheDriver.CCPrintOptionsFilename);
-    if (checkEnvVar<bool>("CC_PRINT_HEADERS", "CC_PRINT_HEADERS_FILE", TheDriver.CCPrintHeadersFilename)) {
-        TheDriver.CCPrintHeadersFormat = HIFMT_Textual;
-        TheDriver.CCPrintHeadersFiltering = HIFIL_None;
-    } else if (const char* EnvVar = checkEnvVar<const char*>("CC_PRINT_HEADERS_FORMAT", "CC_PRINT_HEADERS_FILE", TheDriver.CCPrintHeadersFilename)) {
-        TheDriver.CCPrintHeadersFormat = stringToHeaderIncludeFormatKind(EnvVar);
-        if (!TheDriver.CCPrintHeadersFormat) {
-            TheDriver.Diag(clang::diag::err_drv_print_header_env_var) << 0 << EnvVar;
-            return false;
-        }
-
-        const char*                FilteringStr = ::getenv("CC_PRINT_HEADERS_FILTERING");
-        HeaderIncludeFilteringKind Filtering;
-        if (!stringToHeaderIncludeFiltering(FilteringStr, Filtering)) {
-            TheDriver.Diag(clang::diag::err_drv_print_header_env_var)
-                << 1 << FilteringStr;
-            return false;
-        }
-
-        if ((TheDriver.CCPrintHeadersFormat == HIFMT_Textual && Filtering != HIFIL_None) || (TheDriver.CCPrintHeadersFormat == HIFMT_JSON && Filtering != HIFIL_Only_Direct_System)) {
-            TheDriver.Diag(clang::diag::err_drv_print_header_env_var_combination)
-                << EnvVar << FilteringStr;
-            return false;
-        }
-        TheDriver.CCPrintHeadersFiltering = Filtering;
-    }
-
-    TheDriver.CCLogDiagnostics =
-        checkEnvVar<bool>("CC_LOG_DIAGNOSTICS", "CC_LOG_DIAGNOSTICS_FILE", TheDriver.CCLogDiagnosticsFilename);
-    TheDriver.CCPrintProcessStats =
-        checkEnvVar<bool>("CC_PRINT_PROC_STAT", "CC_PRINT_PROC_STAT_FILE", TheDriver.CCPrintStatReportFilename);
-
-    return true;
-}
-
 static void
 FixupDiagPrefixExeName(TextDiagnosticPrinter* DiagClient, const std::string& Path) {
     // If the clang binary happens to be named cl.exe for compatibility reasons,
@@ -345,29 +307,9 @@ clang_main(int Argc, char** Argv) {
         }
     }
 
-    // Handle CCC_OVERRIDE_OPTIONS, used for editing a command line behind the
-    // scenes.
-    std::set<std::string> SavedStrings;
-    if (const char* OverrideStr = ::getenv("CCC_OVERRIDE_OPTIONS")) {
-        // FIXME: Driver shouldn't take extra initial argument.
-        ApplyQAOverride(Args, OverrideStr, SavedStrings);
-    }
-
     std::string Path = GetExecutablePath(Args[0]);
 
-    // Whether the cc1 tool should be called inside the current process, or if we
-    // should spawn a new clang subprocess (old behavior).
-    // Not having an additional process saves some execution time of Windows,
-    // and makes debugging and profiling easier.
-    bool UseNewCC1Process = CLANG_SPAWN_CC1;
-    for (const char* Arg : Args)
-        UseNewCC1Process = llvm::StringSwitch<bool>(Arg)
-                               .Case("-fno-integrated-cc1", true)
-                               .Case("-fintegrated-cc1", false)
-                               .Default(UseNewCC1Process);
-
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts =
-        CreateAndPopulateDiagOpts(Args);
+    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = CreateAndPopulateDiagOpts(Args);
 
     TextDiagnosticPrinter* DiagClient = new TextDiagnosticPrinter(llvm::errs(), &*DiagOpts);
     FixupDiagPrefixExeName(DiagClient, Path);
@@ -392,47 +334,27 @@ clang_main(int Argc, char** Argv) {
     auto TargetAndMode = ToolChain::getTargetAndModeFromProgramName(Args[0]);
     TheDriver.setTargetAndMode(TargetAndMode);
 
+    std::set<std::string> SavedStrings;
     insertTargetAndModeArgs(TargetAndMode, Args, SavedStrings);
 
-    if (!SetBackdoorDriverOutputsFromEnvVars(TheDriver))
-        return 1;
+    TheDriver.CC1Main = &ExecuteCC1Tool;
+    // Ensure the CC1Command actually catches cc1 crashes
+    llvm::CrashRecoveryContext::Enable();
 
-    if (!UseNewCC1Process) {
-        TheDriver.CC1Main = &ExecuteCC1Tool;
-        // Ensure the CC1Command actually catches cc1 crashes
-        llvm::CrashRecoveryContext::Enable();
-    }
-
-    std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(Args));
+    std::unique_ptr<Compilation> Comp(TheDriver.BuildCompilation(Args));
 
     Driver::ReproLevel ReproLevel = Driver::ReproLevel::OnCrash;
-    if (Arg* A = C->getArgs().getLastArg(options::OPT_gen_reproducer_eq)) {
-        auto Level = llvm::StringSwitch<Optional<Driver::ReproLevel>>(A->getValue())
-                         .Case("off", Driver::ReproLevel::Off)
-                         .Case("crash", Driver::ReproLevel::OnCrash)
-                         .Case("error", Driver::ReproLevel::OnError)
-                         .Case("always", Driver::ReproLevel::Always)
-                         .Default(std::nullopt);
-        if (!Level) {
-            llvm::errs() << "Unknown value for " << A->getSpelling() << ": '"
-                         << A->getValue() << "'\n";
-            return 1;
-        }
-        ReproLevel = *Level;
-    }
-    if (!!::getenv("FORCE_CLANG_DIAGNOSTICS_CRASH"))
-        ReproLevel = Driver::ReproLevel::Always;
 
     int                   Res = 1;
     bool                  IsCrash = false;
     Driver::CommandStatus CommandStatus = Driver::CommandStatus::Ok;
     // Pretend the first command failed if ReproStatus is Always.
     const Command* FailingCommand = nullptr;
-    if (!C->getJobs().empty())
-        FailingCommand = &*C->getJobs().begin();
-    if (C && !C->containsError()) {
+    if (!Comp->getJobs().empty())
+        FailingCommand = &*Comp->getJobs().begin();
+    if (Comp && !Comp->containsError()) {
         SmallVector<std::pair<int, const Command*>, 4> FailingCommands;
-        Res = TheDriver.ExecuteCompilation(*C, FailingCommands);
+        Res = TheDriver.ExecuteCompilation(*Comp, FailingCommands);
 
         for (const auto& P : FailingCommands) {
             int CommandRes = P.first;
@@ -462,12 +384,12 @@ clang_main(int Argc, char** Argv) {
         }
     }
 
-    if (FailingCommand != nullptr && TheDriver.maybeGenerateCompilationDiagnostics(CommandStatus, ReproLevel, *C, *FailingCommand))
+    if (FailingCommand != nullptr && TheDriver.maybeGenerateCompilationDiagnostics(CommandStatus, ReproLevel, *Comp, *FailingCommand))
         Res = 1;
 
     Diags.getClient()->finish();
 
-    if (!UseNewCC1Process && IsCrash) {
+    if (IsCrash) {
         // When crashing in -fintegrated-cc1 mode, bury the timer pointers, because
         // the internal linked list might point to already released stack frames.
         llvm::BuryPointer(llvm::TimerGroup::aquireDefaultGroup());
