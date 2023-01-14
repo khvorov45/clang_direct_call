@@ -137,7 +137,7 @@ generateReproducerForInvocationArguments(ArrayRef<const char *> Argv,
   return std::nullopt;
 }
 
-std::string GetExecutablePath(const char *Argv0, bool CanonicalPrefixes);
+std::string GetExecutablePath(const char *Argv0);
 
 static void printReproducerInformation(
     llvm::raw_ostream &OS, const ClangInvocationInfo &Info,
@@ -178,7 +178,7 @@ int cc1gen_reproducer_main(ArrayRef<const char *> Argv, const char *Argv0,
   std::vector<const char *> DriverArgs;
   for (const auto &Arg : InvocationInfo.Arguments)
     DriverArgs.push_back(Arg.c_str());
-  std::string Path = GetExecutablePath(Argv0, /*CanonicalPrefixes=*/true);
+  std::string Path = GetExecutablePath(Argv0);
   DriverArgs[0] = Path.c_str();
   llvm::Optional<driver::Driver::CompilationDiagnosticReport> Report =
       generateReproducerForInvocationArguments(DriverArgs, InvocationInfo);

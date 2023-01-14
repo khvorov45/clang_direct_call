@@ -55,17 +55,7 @@ using namespace clang::driver;
 using namespace llvm::opt;
 
 std::string
-GetExecutablePath(const char* Argv0, bool CanonicalPrefixes) {
-    if (!CanonicalPrefixes) {
-        SmallString<128> ExecutablePath(Argv0);
-        // Do a PATH lookup if Argv0 isn't a valid path.
-        if (!llvm::sys::fs::exists(ExecutablePath))
-            if (llvm::ErrorOr<std::string> P =
-                    llvm::sys::findProgramByName(ExecutablePath))
-                ExecutablePath = *P;
-        return std::string(ExecutablePath.str());
-    }
-
+GetExecutablePath(const char* Argv0) {
     // This just needs to be some symbol in the binary; C++ doesn't
     // allow taking the address of ::main however.
     void* P = (void*)(intptr_t)GetExecutablePath;
@@ -344,39 +334,26 @@ extern "C" int
 clang_main(int Argc, char** Argv) {
     llvm::InitializeAllTargets();
 
-    llvm::cl::TokenizerCallback Tokenizer = &llvm::cl::TokenizeGNUCommandLine;
-
     SmallVector<const char*, 256> Args(Argv, Argv + Argc);
 
     // Handle -cc1 integrated tools, even if -cc1 was expanded from a response
     // file.
-    auto FirstArg = llvm::find_if(llvm::drop_begin(Args), [](const char* A) { return A != nullptr; });
-    if (FirstArg != Args.end() && StringRef(*FirstArg).startswith("-cc1")) {
-        return ExecuteCC1Tool(Args);
+    {
+        auto FirstArg = llvm::find_if(llvm::drop_begin(Args), [](const char* A) { return A != nullptr; });
+        if (FirstArg != Args.end() && StringRef(*FirstArg).startswith("-cc1")) {
+            return ExecuteCC1Tool(Args);
+        }
     }
 
-    // Handle options that need handling before the real command line parsing in
-    // Driver::BuildCompilation()
-    bool CanonicalPrefixes = true;
-    for (int i = 1, size = Args.size(); i < size; ++i) {
-        // Skip end-of-line response file markers
-        if (Args[i] == nullptr)
-            continue;
-        if (StringRef(Args[i]) == "-canonical-prefixes")
-            CanonicalPrefixes = true;
-        else if (StringRef(Args[i]) == "-no-canonical-prefixes")
-            CanonicalPrefixes = false;
-    }
-
-    std::set<std::string> SavedStrings;
     // Handle CCC_OVERRIDE_OPTIONS, used for editing a command line behind the
     // scenes.
+    std::set<std::string> SavedStrings;
     if (const char* OverrideStr = ::getenv("CCC_OVERRIDE_OPTIONS")) {
         // FIXME: Driver shouldn't take extra initial argument.
         ApplyQAOverride(Args, OverrideStr, SavedStrings);
     }
 
-    std::string Path = GetExecutablePath(Args[0], CanonicalPrefixes);
+    std::string Path = GetExecutablePath(Args[0]);
 
     // Whether the cc1 tool should be called inside the current process, or if we
     // should spawn a new clang subprocess (old behavior).
@@ -411,7 +388,7 @@ clang_main(int Argc, char** Argv) {
     ProcessWarningOptions(Diags, *DiagOpts, /*ReportDiags=*/false);
 
     Driver TheDriver(Path, llvm::sys::getDefaultTargetTriple(), Diags);
-    SetInstallDir(Args, TheDriver, CanonicalPrefixes);
+    SetInstallDir(Args, TheDriver, true);
     auto TargetAndMode = ToolChain::getTargetAndModeFromProgramName(Args[0]);
     TheDriver.setTargetAndMode(TargetAndMode);
 
