@@ -279,7 +279,7 @@ compileExe(prb_Arena* arena, prb_Str startsWith, CompileStaticLibResult* deps, i
     CompileObjsResult objResult = compileObjsThatStartWith(arena, startsWith);
     if (anyDepRecompiled || objResult.anyRecompiled || !prb_isFile(arena, outfile)) {
         prb_assert(prb_removePathIfExists(arena, outfile));
-        prb_Str libCmd = prb_fmt(arena, "clang -o %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(outfile), prb_LIT(objResult.objs), prb_LIT(depsStr));
+        prb_Str libCmd = prb_fmt(arena, "clang -fuse-ld=mold -o %.*s %.*s %.*s -lstdc++ -lm", prb_LIT(outfile), prb_LIT(objResult.objs), prb_LIT(depsStr));
         execCmd(arena, libCmd);
     } else {
         prb_writeToStdout(prb_fmt(arena, "skip %.*s\n", prb_LIT(outnameWithExt)));
