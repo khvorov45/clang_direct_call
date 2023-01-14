@@ -346,14 +346,7 @@ clang_main(int Argc, char** Argv) {
 
     llvm::cl::TokenizerCallback Tokenizer = &llvm::cl::TokenizeGNUCommandLine;
 
-    llvm::BumpPtrAllocator A;
-    llvm::cl::ExpansionContext ECtx(A, Tokenizer);
-    ECtx.setMarkEOLs(false);
     SmallVector<const char*, 256> Args(Argv, Argv + Argc);
-    if (llvm::Error Err = ECtx.expandResponseFiles(Args)) {
-        llvm::errs() << toString(std::move(Err)) << '\n';
-        return 1;
-    }
 
     // Handle -cc1 integrated tools, even if -cc1 was expanded from a response
     // file.
