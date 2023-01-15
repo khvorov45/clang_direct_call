@@ -146,10 +146,7 @@ mca::InstrumentManager *createInstrumentManager(const MCSubtargetInfo &STI,
 /// Targets should implement a single global instance of this class (which
 /// will be zero initialized), and pass that instance to the TargetRegistry as
 /// part of their initialization.
-class Target {
-public:
-  friend struct TargetRegistry;
-
+struct Target {
   using ArchMatchFnTy = bool (*)(Triple::ArchType Arch);
 
   using MCAsmInfoCtorFnTy = MCAsmInfo *(*)(const MCRegisterInfo &MRI,
@@ -253,7 +250,6 @@ public:
       mca::InstrumentManager *(*)(const MCSubtargetInfo &STI,
                                   const MCInstrInfo &MCII);
 
-private:
   /// Next - The next registered target in the linked list, maintained by the
   /// TargetRegistry.
   Target *Next;
@@ -366,7 +362,6 @@ private:
   /// InstrumentManager, if registered (default = nullptr).
   InstrumentManagerCtorTy InstrumentManagerCtorFn = nullptr;
 
-public:
   Target() = default;
 
   /// @name Target Information
