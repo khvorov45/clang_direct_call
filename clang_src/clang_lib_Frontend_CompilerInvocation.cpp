@@ -4998,107 +4998,102 @@ ParseTargetArgs(TargetOptions& Opts, ArgList& Args, DiagnosticsEngine& Diags) {
 }
 
 bool
-CompilerInvocation::CreateFromArgsImpl(
-    CompilerInvocation&   Res,
-    ArrayRef<const char*> CommandLineArgs,
-    DiagnosticsEngine&    Diags,
-    const char*           Argv0
-) {
-    unsigned NumErrorsBefore = Diags.getNumErrors();
-
-    // Parse the arguments.
-    const OptTable& Opts = getDriverOptTable();
-    const unsigned  IncludedFlagsBitmask = options::CC1Option;
-    unsigned        MissingArgIndex, MissingArgCount;
-    InputArgList    Args = Opts.ParseArgs(CommandLineArgs, MissingArgIndex, MissingArgCount, IncludedFlagsBitmask);
-    LangOptions&    LangOpts = *Res.getLangOpts();
-
-    // Check for missing argument error.
-    if (MissingArgCount)
-        Diags.Report(diag::err_drv_missing_argument)
-            << Args.getArgString(MissingArgIndex) << MissingArgCount;
-
-    // Issue errors on unknown arguments.
-    for (const auto* A : Args.filtered(OPT_UNKNOWN)) {
-        auto        ArgString = A->getAsString(Args);
-        std::string Nearest;
-        if (Opts.findNearest(ArgString, Nearest, IncludedFlagsBitmask) > 1)
-            Diags.Report(diag::err_drv_unknown_argument) << ArgString;
-        else
-            Diags.Report(diag::err_drv_unknown_argument_with_suggestion)
-                << ArgString << Nearest;
-    }
-
-    ParseFileSystemArgs(Res.getFileSystemOpts(), Args, Diags);
-    ParseMigratorArgs(Res.getMigratorOpts(), Args, Diags);
-    ParseAnalyzerArgs(*Res.getAnalyzerOpts(), Args, Diags);
-    ParseDiagnosticArgs(Res.getDiagnosticOpts(), Args, &Diags,
-                        /*DefaultDiagColor=*/false);
-    ParseFrontendArgs(Res.getFrontendOpts(), Args, Diags, LangOpts.IsHeaderFile);
-    // FIXME: We shouldn't have to pass the DashX option around here
-    InputKind DashX = Res.getFrontendOpts().DashX;
-    ParseTargetArgs(Res.getTargetOpts(), Args, Diags);
-    llvm::Triple T(Res.getTargetOpts().Triple);
-    ParseHeaderSearchArgs(Res.getHeaderSearchOpts(), Args, Diags, Res.getFileSystemOpts().WorkingDir);
-
-    ParseLangArgs(LangOpts, Args, DashX, T, Res.getPreprocessorOpts().Includes, Diags);
-    if (Res.getFrontendOpts().ProgramAction == frontend::RewriteObjC)
-        LangOpts.ObjCExceptions = 1;
-
-    for (auto Warning : Res.getDiagnosticOpts().Warnings) {
-        if (Warning == "misexpect" && !Diags.isIgnored(diag::warn_profile_data_misexpect, SourceLocation())) {
-            Res.getCodeGenOpts().MisExpect = true;
-        }
-    }
-
-    if (LangOpts.CUDA) {
-        // During CUDA device-side compilation, the aux triple is the
-        // triple used for host compilation.
-        if (LangOpts.CUDAIsDevice)
-            Res.getTargetOpts().HostTriple = Res.getFrontendOpts().AuxTriple;
-    }
-
-    // Set the triple of the host for OpenMP device compile.
-    if (LangOpts.OpenMPIsDevice)
-        Res.getTargetOpts().HostTriple = Res.getFrontendOpts().AuxTriple;
-
-    ParseCodeGenArgs(Res.getCodeGenOpts(), Args, DashX, Diags, T, Res.getFrontendOpts().OutputFile, LangOpts);
-
-    // FIXME: Override value name discarding when asan or msan is used because the
-    // backend passes depend on the name of the alloca in order to print out
-    // names.
-    Res.getCodeGenOpts().DiscardValueNames &=
-        !LangOpts.Sanitize.has(SanitizerKind::Address) && !LangOpts.Sanitize.has(SanitizerKind::KernelAddress) && !LangOpts.Sanitize.has(SanitizerKind::Memory) && !LangOpts.Sanitize.has(SanitizerKind::KernelMemory);
-
-    ParsePreprocessorArgs(Res.getPreprocessorOpts(), Args, Diags, Res.getFrontendOpts().ProgramAction, Res.getFrontendOpts());
-    ParsePreprocessorOutputArgs(Res.getPreprocessorOutputOpts(), Args, Diags, Res.getFrontendOpts().ProgramAction);
-
-    ParseDependencyOutputArgs(Res.getDependencyOutputOpts(), Args, Diags, Res.getFrontendOpts().ProgramAction, Res.getPreprocessorOutputOpts().ShowLineMarkers);
-    if (!Res.getDependencyOutputOpts().OutputFile.empty() && Res.getDependencyOutputOpts().Targets.empty())
-        Diags.Report(diag::err_fe_dependency_file_requires_MT);
-
-    // If sanitizer is enabled, disable OPT_ffine_grained_bitfield_accesses.
-    if (Res.getCodeGenOpts().FineGrainedBitfieldAccesses && !Res.getLangOpts()->Sanitize.empty()) {
-        Res.getCodeGenOpts().FineGrainedBitfieldAccesses = false;
-        Diags.Report(diag::warn_drv_fine_grained_bitfield_accesses_ignored);
-    }
-
-    // Store the command-line for using in the CodeView backend.
-    if (Res.getCodeGenOpts().CodeViewCommandLine) {
-        Res.getCodeGenOpts().Argv0 = Argv0;
-        append_range(Res.getCodeGenOpts().CommandLineArgs, CommandLineArgs);
-    }
-
-    FixupInvocation(Res, Diags, Args, DashX);
-
-    return Diags.getNumErrors() == NumErrorsBefore;
-}
-
-bool
 CompilerInvocation::CreateFromArgs(CompilerInvocation& Invocation, DiagnosticsEngine& Diags, int argc, char** argv) {
     SmallVector<const char*, 256> Args(argv, argv + argc);
     ArrayRef<const char*>         CommandLineArgs = makeArrayRef(Args).slice(1);
-    bool                          result = CreateFromArgsImpl(Invocation, CommandLineArgs, Diags, argv[0]);
+
+    bool result = false;
+    {
+        unsigned NumErrorsBefore = Diags.getNumErrors();
+
+        // Parse the arguments.
+        const OptTable& Opts = getDriverOptTable();
+        const unsigned  IncludedFlagsBitmask = options::CC1Option;
+        unsigned        MissingArgIndex, MissingArgCount;
+        InputArgList    Args = Opts.ParseArgs(CommandLineArgs, MissingArgIndex, MissingArgCount, IncludedFlagsBitmask);
+        LangOptions&    LangOpts = *Invocation.getLangOpts();
+
+        // Check for missing argument error.
+        if (MissingArgCount)
+            Diags.Report(diag::err_drv_missing_argument)
+                << Args.getArgString(MissingArgIndex) << MissingArgCount;
+
+        // Issue errors on unknown arguments.
+        for (const auto* A : Args.filtered(OPT_UNKNOWN)) {
+            auto        ArgString = A->getAsString(Args);
+            std::string Nearest;
+            if (Opts.findNearest(ArgString, Nearest, IncludedFlagsBitmask) > 1)
+                Diags.Report(diag::err_drv_unknown_argument) << ArgString;
+            else
+                Diags.Report(diag::err_drv_unknown_argument_with_suggestion)
+                    << ArgString << Nearest;
+        }
+
+        ParseFileSystemArgs(Invocation.getFileSystemOpts(), Args, Diags);
+        ParseMigratorArgs(Invocation.getMigratorOpts(), Args, Diags);
+        ParseAnalyzerArgs(*Invocation.getAnalyzerOpts(), Args, Diags);
+        ParseDiagnosticArgs(Invocation.getDiagnosticOpts(), Args, &Diags,
+                            /*DefaultDiagColor=*/false);
+        ParseFrontendArgs(Invocation.getFrontendOpts(), Args, Diags, LangOpts.IsHeaderFile);
+        // FIXME: We shouldn't have to pass the DashX option around here
+        InputKind DashX = Invocation.getFrontendOpts().DashX;
+        ParseTargetArgs(Invocation.getTargetOpts(), Args, Diags);
+        llvm::Triple T(Invocation.getTargetOpts().Triple);
+        ParseHeaderSearchArgs(Invocation.getHeaderSearchOpts(), Args, Diags, Invocation.getFileSystemOpts().WorkingDir);
+
+        ParseLangArgs(LangOpts, Args, DashX, T, Invocation.getPreprocessorOpts().Includes, Diags);
+        if (Invocation.getFrontendOpts().ProgramAction == frontend::RewriteObjC)
+            LangOpts.ObjCExceptions = 1;
+
+        for (auto Warning : Invocation.getDiagnosticOpts().Warnings) {
+            if (Warning == "misexpect" && !Diags.isIgnored(diag::warn_profile_data_misexpect, SourceLocation())) {
+                Invocation.getCodeGenOpts().MisExpect = true;
+            }
+        }
+
+        if (LangOpts.CUDA) {
+            // During CUDA device-side compilation, the aux triple is the
+            // triple used for host compilation.
+            if (LangOpts.CUDAIsDevice)
+                Invocation.getTargetOpts().HostTriple = Invocation.getFrontendOpts().AuxTriple;
+        }
+
+        // Set the triple of the host for OpenMP device compile.
+        if (LangOpts.OpenMPIsDevice)
+            Invocation.getTargetOpts().HostTriple = Invocation.getFrontendOpts().AuxTriple;
+
+        ParseCodeGenArgs(Invocation.getCodeGenOpts(), Args, DashX, Diags, T, Invocation.getFrontendOpts().OutputFile, LangOpts);
+
+        // FIXME: Override value name discarding when asan or msan is used because the
+        // backend passes depend on the name of the alloca in order to print out
+        // names.
+        Invocation.getCodeGenOpts().DiscardValueNames &=
+            !LangOpts.Sanitize.has(SanitizerKind::Address) && !LangOpts.Sanitize.has(SanitizerKind::KernelAddress) && !LangOpts.Sanitize.has(SanitizerKind::Memory) && !LangOpts.Sanitize.has(SanitizerKind::KernelMemory);
+
+        ParsePreprocessorArgs(Invocation.getPreprocessorOpts(), Args, Diags, Invocation.getFrontendOpts().ProgramAction, Invocation.getFrontendOpts());
+        ParsePreprocessorOutputArgs(Invocation.getPreprocessorOutputOpts(), Args, Diags, Invocation.getFrontendOpts().ProgramAction);
+
+        ParseDependencyOutputArgs(Invocation.getDependencyOutputOpts(), Args, Diags, Invocation.getFrontendOpts().ProgramAction, Invocation.getPreprocessorOutputOpts().ShowLineMarkers);
+        if (!Invocation.getDependencyOutputOpts().OutputFile.empty() && Invocation.getDependencyOutputOpts().Targets.empty())
+            Diags.Report(diag::err_fe_dependency_file_requires_MT);
+
+        // If sanitizer is enabled, disable OPT_ffine_grained_bitfield_accesses.
+        if (Invocation.getCodeGenOpts().FineGrainedBitfieldAccesses && !Invocation.getLangOpts()->Sanitize.empty()) {
+            Invocation.getCodeGenOpts().FineGrainedBitfieldAccesses = false;
+            Diags.Report(diag::warn_drv_fine_grained_bitfield_accesses_ignored);
+        }
+
+        // Store the command-line for using in the CodeView backend.
+        if (Invocation.getCodeGenOpts().CodeViewCommandLine) {
+            Invocation.getCodeGenOpts().Argv0 = argv[0];
+            append_range(Invocation.getCodeGenOpts().CommandLineArgs, CommandLineArgs);
+        }
+
+        FixupInvocation(Invocation, Diags, Args, DashX);
+
+        result = Diags.getNumErrors() == NumErrorsBefore;
+    }
+
     return result;
 }
 

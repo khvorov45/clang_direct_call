@@ -236,10 +236,6 @@ public:
   void clearImplicitModuleBuildOptions();
 
 private:
-  static bool CreateFromArgsImpl(CompilerInvocation &Res,
-                                 ArrayRef<const char *> CommandLineArgs,
-                                 DiagnosticsEngine &Diags, const char *Argv0);
-
   /// Generate command line options from DiagnosticOptions.
   static void GenerateDiagnosticArgs(const DiagnosticOptions &Opts,
                                      SmallVectorImpl<const char *> &Args,
