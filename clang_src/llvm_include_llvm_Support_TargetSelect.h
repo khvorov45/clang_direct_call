@@ -24,9 +24,6 @@ extern "C" {
 #define LLVM_TARGET(TargetName) void LLVMInitialize##TargetName##TargetInfo();
 #include "llvm_include_llvm_Config_Targets.def"
 
-#define LLVM_TARGET(TargetName) void LLVMInitialize##TargetName##Target();
-#include "llvm_include_llvm_Config_Targets.def"
-
   // Declare all of the target-MC-initialization functions that are available.
 #define LLVM_TARGET(TargetName) void LLVMInitialize##TargetName##TargetMC();
 #include "llvm_include_llvm_Config_Targets.def"

@@ -43,10 +43,6 @@ typedef struct LLVMOpaqueTargetLibraryInfotData *LLVMTargetLibraryInfoRef;
 #include "llvm_include_llvm_Config_Targets.def"
 #undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
 
-#define LLVM_TARGET(TargetName) void LLVMInitialize##TargetName##Target(void);
-#include "llvm_include_llvm_Config_Targets.def"
-#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
-
 #define LLVM_TARGET(TargetName) \
   void LLVMInitialize##TargetName##TargetMC(void);
 #include "llvm_include_llvm_Config_Targets.def"

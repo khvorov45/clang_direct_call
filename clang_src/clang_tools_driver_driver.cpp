@@ -12,7 +12,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
+#include "llvm_lib_Target_X86_X86TargetMachine.h"
+#include "llvm_lib_Target_X86_X86.h"
+
 #include "llvm_include_llvm_MC_TargetRegistry.h"
+#include "llvm_include_llvm_InitializePasses.h"
 
 #include "clang_include_clang_Driver_Driver.h"
 #include "clang_include_clang_Basic_DiagnosticOptions.h"
@@ -355,7 +359,47 @@ extern "C" int
 clang_main(int argc, char** argv) {
     llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_32Target(), "x86", "32-bit X86: Pentium-Pro and above", "X86", LLVMX86MatchProc, true);
     llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_64Target(), "x86-64", "64-bit X86: EM64T and AMD64", "X86", LLVMX8664MatchProc, true);
-    LLVMInitializeX86Target();
+
+    {
+        // Register the target.
+        llvm::RegisterTargetMachine<llvm::X86TargetMachine> X(llvm::getTheX86_32Target());
+        llvm::RegisterTargetMachine<llvm::X86TargetMachine> Y(llvm::getTheX86_64Target());
+
+        llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();
+        llvm::initializeX86LowerAMXIntrinsicsLegacyPassPass(PR);
+        llvm::initializeX86LowerAMXTypeLegacyPassPass(PR);
+        llvm::initializeX86PreAMXConfigPassPass(PR);
+        llvm::initializeX86PreTileConfigPass(PR);
+        llvm::initializeGlobalISel(PR);
+        llvm::initializeWinEHStatePassPass(PR);
+        llvm::initializeFixupBWInstPassPass(PR);
+        llvm::initializeEvexToVexInstPassPass(PR);
+        llvm::initializeFixupLEAPassPass(PR);
+        llvm::initializeFPSPass(PR);
+        llvm::initializeX86FixupSetCCPassPass(PR);
+        llvm::initializeX86CallFrameOptimizationPass(PR);
+        llvm::initializeX86CmovConverterPassPass(PR);
+        llvm::initializeX86TileConfigPass(PR);
+        llvm::initializeX86FastPreTileConfigPass(PR);
+        llvm::initializeX86FastTileConfigPass(PR);
+        llvm::initializeX86KCFIPass(PR);
+        llvm::initializeX86LowerTileCopyPass(PR);
+        llvm::initializeX86ExpandPseudoPass(PR);
+        llvm::initializeX86ExecutionDomainFixPass(PR);
+        llvm::initializeX86DomainReassignmentPass(PR);
+        llvm::initializeX86AvoidSFBPassPass(PR);
+        llvm::initializeX86AvoidTrailingCallPassPass(PR);
+        llvm::initializeX86SpeculativeLoadHardeningPassPass(PR);
+        llvm::initializeX86SpeculativeExecutionSideEffectSuppressionPass(PR);
+        llvm::initializeX86FlagsCopyLoweringPassPass(PR);
+        llvm::initializeX86LoadValueInjectionLoadHardeningPassPass(PR);
+        llvm::initializeX86LoadValueInjectionRetHardeningPassPass(PR);
+        llvm::initializeX86OptimizeLEAPassPass(PR);
+        llvm::initializeX86PartialReductionPass(PR);
+        llvm::initializePseudoProbeInserterPass(PR);
+        llvm::initializeX86ReturnThunksPass(PR);
+        llvm::initializeX86DAGToDAGISelPass(PR);
+    }
 
     SmallVector<const char*, 256> Args(argv, argv + argc);
 

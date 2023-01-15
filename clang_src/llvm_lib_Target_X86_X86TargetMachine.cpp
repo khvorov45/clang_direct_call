@@ -65,47 +65,6 @@ static cl::opt<bool>
                      cl::desc("Enable the tile register allocation pass"),
                      cl::init(true), cl::Hidden);
 
-extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86Target() {
-  // Register the target.
-  RegisterTargetMachine<X86TargetMachine> X(getTheX86_32Target());
-  RegisterTargetMachine<X86TargetMachine> Y(getTheX86_64Target());
-
-  PassRegistry &PR = *PassRegistry::getPassRegistry();
-  initializeX86LowerAMXIntrinsicsLegacyPassPass(PR);
-  initializeX86LowerAMXTypeLegacyPassPass(PR);
-  initializeX86PreAMXConfigPassPass(PR);
-  initializeX86PreTileConfigPass(PR);
-  initializeGlobalISel(PR);
-  initializeWinEHStatePassPass(PR);
-  initializeFixupBWInstPassPass(PR);
-  initializeEvexToVexInstPassPass(PR);
-  initializeFixupLEAPassPass(PR);
-  initializeFPSPass(PR);
-  initializeX86FixupSetCCPassPass(PR);
-  initializeX86CallFrameOptimizationPass(PR);
-  initializeX86CmovConverterPassPass(PR);
-  initializeX86TileConfigPass(PR);
-  initializeX86FastPreTileConfigPass(PR);
-  initializeX86FastTileConfigPass(PR);
-  initializeX86KCFIPass(PR);
-  initializeX86LowerTileCopyPass(PR);
-  initializeX86ExpandPseudoPass(PR);
-  initializeX86ExecutionDomainFixPass(PR);
-  initializeX86DomainReassignmentPass(PR);
-  initializeX86AvoidSFBPassPass(PR);
-  initializeX86AvoidTrailingCallPassPass(PR);
-  initializeX86SpeculativeLoadHardeningPassPass(PR);
-  initializeX86SpeculativeExecutionSideEffectSuppressionPass(PR);
-  initializeX86FlagsCopyLoweringPassPass(PR);
-  initializeX86LoadValueInjectionLoadHardeningPassPass(PR);
-  initializeX86LoadValueInjectionRetHardeningPassPass(PR);
-  initializeX86OptimizeLEAPassPass(PR);
-  initializeX86PartialReductionPass(PR);
-  initializePseudoProbeInserterPass(PR);
-  initializeX86ReturnThunksPass(PR);
-  initializeX86DAGToDAGISelPass(PR);
-}
-
 static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
   if (TT.isOSBinFormatMachO()) {
     if (TT.getArch() == Triple::x86_64)
