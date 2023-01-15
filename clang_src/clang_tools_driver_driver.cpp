@@ -344,26 +344,22 @@ mdc_strStartsWith(mdc_Str str, mdc_Str pattern) {
 }
 
 static bool
-LLVMX86MatchProc(llvm::Triple::ArchType archType) {
-    bool result = archType == llvm::Triple::x86;
-    return result;
-}
-
-static bool
 LLVMX8664MatchProc(llvm::Triple::ArchType archType) {
     bool result = archType == llvm::Triple::x86_64;
     return result;
 }
 
+static llvm::TargetMachine*
+LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) {
+    return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
+}
+
 extern "C" int
 clang_main(int argc, char** argv) {
-    llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_32Target(), "x86", "32-bit X86: Pentium-Pro and above", "X86", LLVMX86MatchProc, true);
-    llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_64Target(), "x86-64", "64-bit X86: EM64T and AMD64", "X86", LLVMX8664MatchProc, true);
-
     {
-        // Register the target.
-        llvm::RegisterTargetMachine<llvm::X86TargetMachine> X(llvm::getTheX86_32Target());
-        llvm::RegisterTargetMachine<llvm::X86TargetMachine> Y(llvm::getTheX86_64Target());
+        llvm::Target& x8664Target = llvm::getTheX86_64Target();
+        llvm::TargetRegistry::RegisterTarget(x8664Target, "x86-64", "64-bit X86: EM64T and AMD64", "X86", LLVMX8664MatchProc, true);
+        llvm::TargetRegistry::RegisterTargetMachine(x8664Target, LLVMX86TargetMachineProc);
 
         llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();
         llvm::initializeX86LowerAMXIntrinsicsLegacyPassPass(PR);
