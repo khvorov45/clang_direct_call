@@ -40,22 +40,6 @@
 using namespace clang;
 using namespace llvm::opt;
 
-static void
-LLVMErrorHandler(void* UserData, const char* Message, bool GenCrashDiag) {
-    DiagnosticsEngine& Diags = *static_cast<DiagnosticsEngine*>(UserData);
-
-    Diags.Report(diag::err_fe_error_backend) << Message;
-
-    // Run the interrupt handlers to make sure any special cleanups get done, in
-    // particular that we remove files registered with RemoveFileOnSignal.
-    llvm::sys::RunInterruptHandlers();
-
-    // We cannot recover from llvm errors.  When reporting a fatal error, exit
-    // with status 70 to generate crash diagnostics.  For BSD systems this is
-    // defined as an internal software error.  Otherwise, exit with status 1.
-    llvm::sys::Process::Exit(GenCrashDiag ? 70 : 1);
-}
-
 // clang-format off
 #define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
 
@@ -187,65 +171,16 @@ cc1_main(int argc, char** argv) {
 
     bool Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Diags, argc, argv);
 
-    // Create the actual diagnostics engine.
     Clang->createDiagnostics();
-    if (!Clang->hasDiagnostics())
-        return 1;
+    Success = Clang->hasDiagnostics();
 
-    // Set an error handler, so that any LLVM backend diagnostics go through our
-    // error handler.
-    llvm::install_fatal_error_handler(LLVMErrorHandler, static_cast<void*>(&Clang->getDiagnostics()));
-
-    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-    if (!Success) {
-        Clang->getDiagnosticClient().finish();
-        return 1;
-    }
-
-    // Execute the frontend actions.
-    {
-        llvm::TimeTraceScope TimeScope("ExecuteCompiler");
+    if (Success) {
+        DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
         Success = ExecuteCompilerInvocation(Clang.get());
+    } else {
+        Clang->getDiagnosticClient().finish();
     }
 
-    // If any timers were active but haven't been destroyed yet, print their
-    // results now.  This happens in -disable-free mode.
-    llvm::TimerGroup::printAll(llvm::errs());
-    llvm::TimerGroup::clearAll();
-
-    if (llvm::timeTraceProfilerEnabled()) {
-        SmallString<128> Path(Clang->getFrontendOpts().OutputFile);
-        llvm::sys::path::replace_extension(Path, "json");
-        if (!Clang->getFrontendOpts().TimeTracePath.empty()) {
-            // replace the suffix to '.json' directly
-            SmallString<128> TracePath(Clang->getFrontendOpts().TimeTracePath);
-            if (llvm::sys::fs::is_directory(TracePath))
-                llvm::sys::path::append(TracePath, llvm::sys::path::filename(Path));
-            Path.assign(TracePath);
-        }
-        if (auto profilerOutput = Clang->createOutputFile(
-                Path.str(),
-                /*Binary=*/false,
-                /*RemoveFileOnSignal=*/false,
-                /*useTemporary=*/false
-            )) {
-            llvm::timeTraceProfilerWrite(*profilerOutput);
-            profilerOutput.reset();
-            llvm::timeTraceProfilerCleanup();
-            Clang->clearOutputFiles(false);
-        }
-    }
-
-    // Our error handler depends on the Diagnostics object, which we're
-    // potentially about to delete. Uninstall the handler now so that any
-    // later errors use the default handling behavior instead.
-    llvm::remove_fatal_error_handler();
-
-    // When running with -disable-free, don't do any destruction or shutdown.
-    if (Clang->getFrontendOpts().DisableFree) {
-        llvm::BuryPointer(std::move(Clang));
-        return !Success;
-    }
-
-    return !Success;
+    int result = !Success;
+    return result;
 }
