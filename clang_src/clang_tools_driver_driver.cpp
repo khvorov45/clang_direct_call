@@ -279,12 +279,6 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
     // driver.
     llvm::cl::ResetAllOptionOccurrences();
 
-    llvm::BumpPtrAllocator     A;
-    llvm::cl::ExpansionContext ECtx(A, llvm::cl::TokenizeGNUCommandLine);
-    if (llvm::Error Err = ECtx.expandResponseFiles(ArgV)) {
-        llvm::errs() << toString(std::move(Err)) << '\n';
-        return 1;
-    }
     StringRef Tool = ArgV[1];
     void*     GetExecutablePathVP = (void*)(intptr_t)GetExecutablePath;
     if (Tool == "-cc1")
