@@ -61,41 +61,13 @@ using namespace clang;
 using namespace clang::driver;
 using namespace llvm::opt;
 
-std::string
-GetExecutablePath(const char* Argv0) {
-    // This just needs to be some symbol in the binary; C++ doesn't
-    // allow taking the address of ::main however.
-    void* P = (void*)(intptr_t)GetExecutablePath;
-    return llvm::sys::fs::getMainExecutable(Argv0, P);
-}
+// clang-format off
+#define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
 
-extern int cc1_main(ArrayRef<const char*> Argv, const char* Argv0, void* MainAddr);
-extern int cc1as_main(ArrayRef<const char*> Argv, const char* Argv0, void* MainAddr);
-extern int cc1gen_reproducer_main(ArrayRef<const char*> Argv, const char* Argv0, void* MainAddr);
-
-static int
-ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
-    // If we call the cc1 tool from the clangDriver library (through
-    // Driver::CC1Main), we need to clean up the options usage count. The options
-    // are currently global, and they might have been used previously by the
-    // driver.
-    llvm::cl::ResetAllOptionOccurrences();
-
-    StringRef Tool = ArgV[1];
-    void*     GetExecutablePathVP = (void*)(intptr_t)GetExecutablePath;
-    if (Tool == "-cc1")
-        return cc1_main(makeArrayRef(ArgV).slice(1), ArgV[0], GetExecutablePathVP);
-    if (Tool == "-cc1as")
-        return cc1as_main(makeArrayRef(ArgV).slice(2), ArgV[0], GetExecutablePathVP);
-    if (Tool == "-cc1gen-reproducer")
-        return cc1gen_reproducer_main(makeArrayRef(ArgV).slice(2), ArgV[0], GetExecutablePathVP);
-    // Reject unknown tools.
-    llvm::errs() << "error: unknown integrated tool '" << Tool << "'. "
-                 << "Valid tools include '-cc1' and '-cc1as'.\n";
-    return 1;
-}
-
-#define mdc_assert assert
+#ifndef mdc_assert
+#define mdc_assert(condition) assert(condition)
+#endif
+// clang-format on
 
 bool
 mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
@@ -109,10 +81,6 @@ mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
     }
     return result;
 }
-
-// clang-format off
-#define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
-// clang-format on
 
 typedef struct mdc_Str {
     const char* ptr;
@@ -139,6 +107,15 @@ mdc_strStartsWith(mdc_Str str, mdc_Str pattern) {
     return result;
 }
 
+bool
+mdc_streq(mdc_Str str1, mdc_Str str2) {
+    bool result = false;
+    if (str1.len == str2.len) {
+        result = mdc_memeq(str1.ptr, str2.ptr, str1.len);
+    }
+    return result;
+}
+
 static bool
 LLVMX8664MatchProc(llvm::Triple::ArchType archType) {
     bool result = archType == llvm::Triple::x86_64;
@@ -149,6 +126,8 @@ static llvm::TargetMachine*
 LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) {
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
+
+extern int cc1_main(ArrayRef<const char*> Argv, const char* Argv0);
 
 extern "C" int
 clang_main(int argc, char** argv) {
@@ -194,12 +173,16 @@ clang_main(int argc, char** argv) {
         llvm::initializeX86DAGToDAGISelPass(PR);
     }
 
-    SmallVector<const char*, 256> Args(argv, argv + argc);
-
     // NOTE(khvorov) Only support generating objs via the cc1 tool
-    mdc_assert(argc >= 2);
-    mdc_Str firstArg = mdc_STR(argv[1]);
-    mdc_assert(mdc_strStartsWith(firstArg, mdc_STR("-cc1")));
-    int result = ExecuteCC1Tool(Args);
+    int result = 0;
+    {
+        mdc_assert(argc >= 2);
+        mdc_Str firstArg = mdc_STR(argv[1]);
+        mdc_assert(mdc_streq(firstArg, mdc_STR("-cc1")));
+
+        SmallVector<const char*, 256> Args(argv, argv + argc);
+        result = cc1_main(makeArrayRef(Args).slice(1), Args[0]);
+    }
+
     return result;
 }
