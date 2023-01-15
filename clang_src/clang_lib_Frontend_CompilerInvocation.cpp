@@ -628,12 +628,6 @@ using GenerateFn = llvm::function_ref<void(
     CompilerInvocation::StringAllocator
 )>;
 
-static bool
-RoundTrip(ParseFn Parse, GenerateFn Generate, CompilerInvocation& RealInvocation, CompilerInvocation& DummyInvocation, ArrayRef<const char*> CommandLineArgs, DiagnosticsEngine& Diags, const char* Argv0) {
-    bool result = Parse(RealInvocation, CommandLineArgs, Diags, Argv0);
-    return result;
-}
-
 static void
 addDiagnosticArgs(ArgList& Args, OptSpecifier Group, OptSpecifier GroupWithValue, std::vector<std::string>& Diagnostics) {
     for (auto* A : Args.filtered(Group)) {
@@ -5102,22 +5096,8 @@ CompilerInvocation::CreateFromArgsImpl(
 
 bool
 CompilerInvocation::CreateFromArgs(CompilerInvocation& Invocation, ArrayRef<const char*> CommandLineArgs, DiagnosticsEngine& Diags, const char* Argv0) {
-    CompilerInvocation DummyInvocation;
-
-    return RoundTrip(
-        [](CompilerInvocation& Invocation, ArrayRef<const char*> CommandLineArgs, DiagnosticsEngine& Diags, const char* Argv0) {
-            return CreateFromArgsImpl(Invocation, CommandLineArgs, Diags, Argv0);
-        },
-        [](CompilerInvocation& Invocation, SmallVectorImpl<const char*>& Args, StringAllocator SA) {
-            Args.push_back("-cc1");
-            Invocation.generateCC1CommandLine(Args, SA);
-        },
-        Invocation,
-        DummyInvocation,
-        CommandLineArgs,
-        Diags,
-        Argv0
-    );
+    bool result = CreateFromArgsImpl(Invocation, CommandLineArgs, Diags, Argv0);
+    return result;
 }
 
 std::string
