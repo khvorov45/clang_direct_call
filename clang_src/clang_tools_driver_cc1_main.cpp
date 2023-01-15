@@ -37,16 +37,8 @@
 #include "llvm_include_llvm_Target_TargetMachine.h"
 #include <cstdio>
 
-#ifdef CLANG_HAVE_RLIMITS
-#include <sys/resource.h>
-#endif
-
 using namespace clang;
 using namespace llvm::opt;
-
-//===----------------------------------------------------------------------===//
-// Main driver
-//===----------------------------------------------------------------------===//
 
 static void
 LLVMErrorHandler(void* UserData, const char* Message, bool GenCrashDiag) {
@@ -62,120 +54,6 @@ LLVMErrorHandler(void* UserData, const char* Message, bool GenCrashDiag) {
     // with status 70 to generate crash diagnostics.  For BSD systems this is
     // defined as an internal software error.  Otherwise, exit with status 1.
     llvm::sys::Process::Exit(GenCrashDiag ? 70 : 1);
-}
-
-#ifdef CLANG_HAVE_RLIMITS
-#if defined(__linux__) && defined(__PIE__)
-static size_t
-getCurrentStackAllocation() {
-    // If we can't compute the current stack usage, allow for 512K of command
-    // line arguments and environment.
-    size_t Usage = 512 * 1024;
-    if (FILE* StatFile = fopen("/proc/self/stat", "r")) {
-        // We assume that the stack extends from its current address to the end of
-        // the environment space. In reality, there is another string literal (the
-        // program name) after the environment, but this is close enough (we only
-        // need to be within 100K or so).
-        unsigned long StackPtr, EnvEnd;
-        // Disable silly GCC -Wformat warning that complains about length
-        // modifiers on ignored format specifiers. We want to retain these
-        // for documentation purposes even though they have no effect.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat"
-#endif
-        if (fscanf(StatFile,
-                   "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %*lu "
-                   "%*lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %*lu %*ld %*lu %*lu "
-                   "%*lu %*lu %lu %*lu %*lu %*lu %*lu %*lu %*llu %*lu %*lu %*d %*d "
-                   "%*u %*u %*llu %*lu %*ld %*lu %*lu %*lu %*lu %*lu %*lu %lu %*d",
-                   &StackPtr,
-                   &EnvEnd)
-            == 2) {
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-            Usage = StackPtr < EnvEnd ? EnvEnd - StackPtr : StackPtr - EnvEnd;
-        }
-        fclose(StatFile);
-    }
-    return Usage;
-}
-
-#include <alloca.h>
-
-LLVM_ATTRIBUTE_NOINLINE
-static void
-ensureStackAddressSpace() {
-    // Linux kernels prior to 4.1 will sometimes locate the heap of a PIE binary
-    // relatively close to the stack (they are only guaranteed to be 128MiB
-    // apart). This results in crashes if we happen to heap-allocate more than
-    // 128MiB before we reach our stack high-water mark.
-    //
-    // To avoid these crashes, ensure that we have sufficient virtual memory
-    // pages allocated before we start running.
-    size_t    Curr = getCurrentStackAllocation();
-    const int kTargetStack = DesiredStackSize - 256 * 1024;
-    if (Curr < kTargetStack) {
-        volatile char* volatile Alloc =
-            static_cast<volatile char*>(alloca(kTargetStack - Curr));
-        Alloc[0] = 0;
-        Alloc[kTargetStack - Curr - 1] = 0;
-    }
-}
-#else
-static void
-ensureStackAddressSpace() {}
-#endif
-
-/// Attempt to ensure that we have at least 8MiB of usable stack space.
-static void
-ensureSufficientStack() {
-    struct rlimit rlim;
-    if (getrlimit(RLIMIT_STACK, &rlim) != 0)
-        return;
-
-    // Increase the soft stack limit to our desired level, if necessary and
-    // possible.
-    if (rlim.rlim_cur != RLIM_INFINITY && rlim.rlim_cur < rlim_t(DesiredStackSize)) {
-        // Try to allocate sufficient stack.
-        if (rlim.rlim_max == RLIM_INFINITY || rlim.rlim_max >= rlim_t(DesiredStackSize))
-            rlim.rlim_cur = DesiredStackSize;
-        else if (rlim.rlim_cur == rlim.rlim_max)
-            return;
-        else
-            rlim.rlim_cur = rlim.rlim_max;
-
-        if (setrlimit(RLIMIT_STACK, &rlim) != 0 || rlim.rlim_cur != DesiredStackSize)
-            return;
-    }
-
-    // We should now have a stack of size at least DesiredStackSize. Ensure
-    // that we can actually use that much, if necessary.
-    ensureStackAddressSpace();
-}
-#else
-static void
-ensureSufficientStack() {}
-#endif
-
-/// Print supported cpus of the given target.
-static int
-PrintSupportedCPUs(std::string TargetStr) {
-    std::string         Error;
-    const llvm::Target* TheTarget =
-        llvm::TargetRegistry::lookupTarget(TargetStr, Error);
-    if (!TheTarget) {
-        llvm::errs() << Error;
-        return 1;
-    }
-
-    // the target machine will handle the mcpu printing
-    llvm::TargetOptions                  Options;
-    std::unique_ptr<llvm::TargetMachine> TheTargetMachine(
-        TheTarget->createTargetMachine(TargetStr, "", "+cpuhelp", Options, std::nullopt)
-    );
-    return 0;
 }
 
 // clang-format off
@@ -291,10 +169,6 @@ cc1_main(int argc, char** argv) {
         llvm::initializeX86DAGToDAGISelPass(PR);
     }
 
-    const char*                   Argv0 = argv[0];
-    SmallVector<const char*, 256> Args(argv, argv + argc);
-    ArrayRef<const char*>         Argv = makeArrayRef(Args).slice(1);
-
     std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
     IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
@@ -314,22 +188,18 @@ cc1_main(int argc, char** argv) {
     TextDiagnosticBuffer*                 DiagsBuffer = new TextDiagnosticBuffer;
     DiagnosticsEngine                     Diags(DiagID, &*DiagOpts, DiagsBuffer);
 
-    // Setup round-trip remarks for the DiagnosticsEngine used in CreateFromArgs.
-    if (find(Argv, StringRef("-Rround-trip-cc1-args")) != Argv.end())
-        Diags.setSeverity(diag::remark_cc1_round_trip_generated, diag::Severity::Remark, {});
-
-    bool Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Argv, Diags, Argv0);
+    const char* Argv0 = argv[0];
+    bool Success = false;
+    {
+        SmallVector<const char*, 256> Args(argv, argv + argc);
+        ArrayRef<const char*>         Argv = makeArrayRef(Args).slice(1);
+        Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Argv, Diags, Argv0);
+    }
 
     if (Clang->getFrontendOpts().TimeTrace || !Clang->getFrontendOpts().TimeTracePath.empty()) {
         Clang->getFrontendOpts().TimeTrace = 1;
-        llvm::timeTraceProfilerInitialize(
-            Clang->getFrontendOpts().TimeTraceGranularity,
-            Argv0
-        );
+        llvm::timeTraceProfilerInitialize( Clang->getFrontendOpts().TimeTraceGranularity, Argv0);
     }
-    // --print-supported-cpus takes priority over the actual compilation.
-    if (Clang->getFrontendOpts().PrintSupportedCPUs)
-        return PrintSupportedCPUs(Clang->getTargetOpts().Triple);
 
     // Infer the builtin include path if unspecified.
     if (Clang->getHeaderSearchOpts().UseBuiltinIncludes && Clang->getHeaderSearchOpts().ResourceDir.empty()) {
