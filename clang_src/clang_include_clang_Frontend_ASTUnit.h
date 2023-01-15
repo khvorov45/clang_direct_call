@@ -787,57 +787,6 @@ public:
       bool IncludeBriefCommentsInCodeCompletion = false,
       bool UserFilesAreVolatile = false);
 
-  /// LoadFromCommandLine - Create an ASTUnit from a vector of command line
-  /// arguments, which must specify exactly one source file.
-  ///
-  /// \param ArgBegin - The beginning of the argument vector.
-  ///
-  /// \param ArgEnd - The end of the argument vector.
-  ///
-  /// \param PCHContainerOps - The PCHContainerOperations to use for loading and
-  /// creating modules.
-  ///
-  /// \param Diags - The diagnostics engine to use for reporting errors; its
-  /// lifetime is expected to extend past that of the returned ASTUnit.
-  ///
-  /// \param ResourceFilesPath - The path to the compiler resource files.
-  ///
-  /// \param ModuleFormat - If provided, uses the specific module format.
-  ///
-  /// \param ErrAST - If non-null and parsing failed without any AST to return
-  /// (e.g. because the PCH could not be loaded), this accepts the ASTUnit
-  /// mainly to allow the caller to see the diagnostics.
-  ///
-  /// \param VFS - A llvm::vfs::FileSystem to be used for all file accesses.
-  /// Note that preamble is saved to a temporary directory on a RealFileSystem,
-  /// so in order for it to be loaded correctly, VFS should have access to
-  /// it(i.e., be an overlay over RealFileSystem). RealFileSystem will be used
-  /// if \p VFS is nullptr.
-  ///
-  // FIXME: Move OnlyLocalDecls, UseBumpAllocator to setters on the ASTUnit, we
-  // shouldn't need to specify them at construction time.
-  static ASTUnit *LoadFromCommandLine(
-      const char **ArgBegin, const char **ArgEnd,
-      std::shared_ptr<PCHContainerOperations> PCHContainerOps,
-      IntrusiveRefCntPtr<DiagnosticsEngine> Diags, StringRef ResourceFilesPath,
-      bool OnlyLocalDecls = false,
-      CaptureDiagsKind CaptureDiagnostics = CaptureDiagsKind::None,
-      ArrayRef<RemappedFile> RemappedFiles = std::nullopt,
-      bool RemappedFilesKeepOriginalName = true,
-      unsigned PrecompilePreambleAfterNParses = 0,
-      TranslationUnitKind TUKind = TU_Complete,
-      bool CacheCodeCompletionResults = false,
-      bool IncludeBriefCommentsInCodeCompletion = false,
-      bool AllowPCHWithCompilerErrors = false,
-      SkipFunctionBodiesScope SkipFunctionBodies =
-          SkipFunctionBodiesScope::None,
-      bool SingleFileParse = false, bool UserFilesAreVolatile = false,
-      bool ForSerialization = false,
-      bool RetainExcludedConditionalBlocks = false,
-      llvm::Optional<StringRef> ModuleFormat = std::nullopt,
-      std::unique_ptr<ASTUnit> *ErrAST = nullptr,
-      IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS = nullptr);
-
   /// Reparse the source files using the same command-line options that
   /// were originally used to produce this translation unit.
   ///
