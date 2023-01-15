@@ -188,23 +188,7 @@ cc1_main(int argc, char** argv) {
     TextDiagnosticBuffer*                 DiagsBuffer = new TextDiagnosticBuffer;
     DiagnosticsEngine                     Diags(DiagID, &*DiagOpts, DiagsBuffer);
 
-    const char* Argv0 = argv[0];
-    bool Success = false;
-    {
-        SmallVector<const char*, 256> Args(argv, argv + argc);
-        ArrayRef<const char*>         Argv = makeArrayRef(Args).slice(1);
-        Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Argv, Diags, Argv0);
-    }
-
-    if (Clang->getFrontendOpts().TimeTrace || !Clang->getFrontendOpts().TimeTracePath.empty()) {
-        Clang->getFrontendOpts().TimeTrace = 1;
-        llvm::timeTraceProfilerInitialize( Clang->getFrontendOpts().TimeTraceGranularity, Argv0);
-    }
-
-    // Infer the builtin include path if unspecified.
-    if (Clang->getHeaderSearchOpts().UseBuiltinIncludes && Clang->getHeaderSearchOpts().ResourceDir.empty()) {
-        Clang->getHeaderSearchOpts().ResourceDir = CompilerInvocation::GetResourcesPath(Argv0, 0);
-    }
+    bool Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Diags, argc, argv);
 
     // Create the actual diagnostics engine.
     Clang->createDiagnostics();

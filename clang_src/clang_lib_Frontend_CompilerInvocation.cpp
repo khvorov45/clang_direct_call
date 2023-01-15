@@ -5095,8 +5095,10 @@ CompilerInvocation::CreateFromArgsImpl(
 }
 
 bool
-CompilerInvocation::CreateFromArgs(CompilerInvocation& Invocation, ArrayRef<const char*> CommandLineArgs, DiagnosticsEngine& Diags, const char* Argv0) {
-    bool result = CreateFromArgsImpl(Invocation, CommandLineArgs, Diags, Argv0);
+CompilerInvocation::CreateFromArgs(CompilerInvocation& Invocation, DiagnosticsEngine& Diags, int argc, char** argv) {
+    SmallVector<const char*, 256> Args(argv, argv + argc);
+    ArrayRef<const char*>         CommandLineArgs = makeArrayRef(Args).slice(1);
+    bool                          result = CreateFromArgsImpl(Invocation, CommandLineArgs, Diags, argv[0]);
     return result;
 }
 

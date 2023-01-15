@@ -212,28 +212,6 @@ struct CreateInvocationOptions {
   std::vector<std::string> *CC1Args = nullptr;
 };
 
-/// Interpret clang arguments in preparation to parse a file.
-///
-/// This simulates a number of steps Clang takes when its driver is invoked:
-/// - choosing actions (e.g compile + link) to run
-/// - probing the system for settings like standard library locations
-/// - spawning a cc1 subprocess to compile code, with more explicit arguments
-/// - in the cc1 process, assembling those arguments into a CompilerInvocation
-///   which is used to configure the parser
-///
-/// This simulation is lossy, e.g. in some situations one driver run would
-/// result in multiple parses. (Multi-arch, CUDA, ...).
-/// This function tries to select a reasonable invocation that tools should use.
-///
-/// Args[0] should be the driver name, such as "clang" or "/usr/bin/g++".
-/// Absolute path is preferred - this affects searching for system headers.
-///
-/// May return nullptr if an invocation could not be determined.
-/// See CreateInvocationOptions::ShouldRecoverOnErrors to try harder!
-std::unique_ptr<CompilerInvocation>
-createInvocation(ArrayRef<const char *> Args,
-                 CreateInvocationOptions Opts = {});
-
 } // namespace clang
 
 #endif // LLVM_CLANG_FRONTEND_UTILS_H

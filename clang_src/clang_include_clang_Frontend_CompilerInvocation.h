@@ -193,21 +193,7 @@ public:
 class CompilerInvocation : public CompilerInvocationRefBase,
                            public CompilerInvocationValueBase {
 public:
-  /// Create a compiler invocation from a list of input options.
-  /// \returns true on success.
-  ///
-  /// \returns false if an error was encountered while parsing the arguments
-  /// and attempts to recover and continue parsing the rest of the arguments.
-  /// The recovery is best-effort and only guarantees that \p Res will end up in
-  /// one of the vaild-to-access (albeit arbitrary) states.
-  ///
-  /// \param [out] Res - The resulting invocation.
-  /// \param [in] CommandLineArgs - Array of argument strings, this must not
-  /// contain "-cc1".
-  static bool CreateFromArgs(CompilerInvocation &Res,
-                             ArrayRef<const char *> CommandLineArgs,
-                             DiagnosticsEngine &Diags,
-                             const char *Argv0 = nullptr);
+  static bool CreateFromArgs(CompilerInvocation &Res, DiagnosticsEngine &Diags, int argc, char** argv);
 
   /// Get the directory where the compiler headers
   /// reside, relative to the compiler binary (found by the passed in
