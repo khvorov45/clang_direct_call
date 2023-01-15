@@ -1,16 +1,3 @@
-//===-- driver.cpp - Clang GCC-Compatible Driver --------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-//
-// This is the entry point to the clang driver; it is a thin wrapper
-// for functionality in the Driver clang library.
-//
-//===----------------------------------------------------------------------===//
-
 #include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_X86TargetMachine.h"
 #include "llvm_lib_Target_X86_X86.h"
@@ -19,47 +6,6 @@
 #include "llvm_include_llvm_InitializePasses.h"
 
 #include "clang_include_clang_Driver_Driver.h"
-#include "clang_include_clang_Basic_DiagnosticOptions.h"
-#include "clang_include_clang_Basic_HeaderInclude.h"
-#include "clang_include_clang_Config_config.h"
-#include "clang_include_clang_Driver_Compilation.h"
-#include "clang_include_clang_Driver_DriverDiagnostic.h"
-#include "clang_include_clang_Driver_Options.h"
-#include "clang_include_clang_Driver_ToolChain.h"
-#include "clang_include_clang_Frontend_ChainedDiagnosticConsumer.h"
-#include "clang_include_clang_Frontend_CompilerInvocation.h"
-#include "clang_include_clang_Frontend_SerializedDiagnosticPrinter.h"
-#include "clang_include_clang_Frontend_TextDiagnosticPrinter.h"
-#include "clang_include_clang_Frontend_Utils.h"
-#include "llvm_include_llvm_ADT_ArrayRef.h"
-#include "llvm_include_llvm_ADT_SmallString.h"
-#include "llvm_include_llvm_ADT_SmallVector.h"
-#include "llvm_include_llvm_Option_ArgList.h"
-#include "llvm_include_llvm_Option_OptTable.h"
-#include "llvm_include_llvm_Option_Option.h"
-#include "llvm_include_llvm_Support_BuryPointer.h"
-#include "llvm_include_llvm_Support_CommandLine.h"
-#include "llvm_include_llvm_Support_CrashRecoveryContext.h"
-#include "llvm_include_llvm_Support_ErrorHandling.h"
-#include "llvm_include_llvm_Support_FileSystem.h"
-#include "llvm_include_llvm_Support_Host.h"
-#include "llvm_include_llvm_Support_Path.h"
-#include "llvm_include_llvm_Support_PrettyStackTrace.h"
-#include "llvm_include_llvm_Support_Process.h"
-#include "llvm_include_llvm_Support_Program.h"
-#include "llvm_include_llvm_Support_Regex.h"
-#include "llvm_include_llvm_Support_Signals.h"
-#include "llvm_include_llvm_Support_StringSaver.h"
-#include "llvm_include_llvm_Support_TargetSelect.h"
-#include "llvm_include_llvm_Support_Timer.h"
-#include "llvm_include_llvm_Support_raw_ostream.h"
-#include <memory>
-#include <optional>
-#include <set>
-#include <system_error>
-using namespace clang;
-using namespace clang::driver;
-using namespace llvm::opt;
 
 // clang-format off
 #define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
@@ -68,6 +14,11 @@ using namespace llvm::opt;
 #define mdc_assert(condition) assert(condition)
 #endif
 // clang-format on
+
+typedef struct mdc_Str {
+    const char* ptr;
+    intptr_t    len;
+} mdc_Str;
 
 bool
 mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
@@ -81,11 +32,6 @@ mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
     }
     return result;
 }
-
-typedef struct mdc_Str {
-    const char* ptr;
-    intptr_t    len;
-} mdc_Str;
 
 intptr_t
 mdc_strlen(const char* str) {
@@ -127,7 +73,7 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
-extern int cc1_main(ArrayRef<const char*> Argv, const char* Argv0);
+extern int cc1_main(clang::ArrayRef<const char*> Argv, const char* Argv0);
 
 extern "C" int
 clang_main(int argc, char** argv) {
@@ -180,7 +126,7 @@ clang_main(int argc, char** argv) {
         mdc_Str firstArg = mdc_STR(argv[1]);
         mdc_assert(mdc_streq(firstArg, mdc_STR("-cc1")));
 
-        SmallVector<const char*, 256> Args(argv, argv + argc);
+        clang::SmallVector<const char*, 256> Args(argv, argv + argc);
         result = cc1_main(makeArrayRef(Args).slice(1), Args[0]);
     }
 
