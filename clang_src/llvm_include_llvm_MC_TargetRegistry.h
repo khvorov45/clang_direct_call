@@ -1119,32 +1119,6 @@ struct TargetRegistry {
 
 //===--------------------------------------------------------------------===//
 
-/// RegisterTarget - Helper template for registering a target, for use in the
-/// target's initialization function. Usage:
-///
-///
-/// Target &getTheFooTarget() { // The global target instance.
-///   static Target TheFooTarget;
-///   return TheFooTarget;
-/// }
-/// extern "C" void LLVMInitializeFooTargetInfo() {
-///   RegisterTarget<Triple::foo> X(getTheFooTarget(), "foo", "Foo
-///   description", "Foo" /* Backend Name */);
-/// }
-template <Triple::ArchType TargetArchType = Triple::UnknownArch,
-          bool HasJIT = false>
-struct RegisterTarget {
-  RegisterTarget(Target &T, const char *Name, const char *Desc,
-                 const char *BackendName) {
-    TargetRegistry::RegisterTarget(T, Name, Desc, BackendName, &getArchMatch,
-                                   HasJIT);
-  }
-
-  static bool getArchMatch(Triple::ArchType Arch) {
-    return Arch == TargetArchType;
-  }
-};
-
 /// RegisterMCAsmInfo - Helper template for registering a target assembly info
 /// implementation.  This invokes the static "Create" method on the class to
 /// actually do the construction.  Usage:

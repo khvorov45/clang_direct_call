@@ -11,6 +11,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
+#include "llvm_include_llvm_MC_TargetRegistry.h"
+
 #include "clang_include_clang_Driver_Driver.h"
 #include "clang_include_clang_Basic_DiagnosticOptions.h"
 #include "clang_include_clang_Basic_HeaderInclude.h"
@@ -294,7 +297,8 @@ ExecuteCC1Tool(SmallVectorImpl<const char*>& ArgV) {
 
 #define mdc_assert assert
 
-bool mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
+bool
+mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
     mdc_assert(bytes >= 0);
     bool result = true;
     for (intptr_t index = 0; index < bytes; index++) {
@@ -335,9 +339,23 @@ mdc_strStartsWith(mdc_Str str, mdc_Str pattern) {
     return result;
 }
 
+static bool
+LLVMX86MatchProc(llvm::Triple::ArchType archType) {
+    bool result = archType == llvm::Triple::x86;
+    return result;
+}
+
+static bool
+LLVMX8664MatchProc(llvm::Triple::ArchType archType) {
+    bool result = archType == llvm::Triple::x86_64;
+    return result;
+}
+
 extern "C" int
 clang_main(int argc, char** argv) {
-    llvm::InitializeAllTargets();
+    llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_32Target(), "x86", "32-bit X86: Pentium-Pro and above", "X86", LLVMX86MatchProc, true);
+    llvm::TargetRegistry::RegisterTarget(llvm::getTheX86_64Target(), "x86-64", "64-bit X86: EM64T and AMD64", "X86", LLVMX8664MatchProc, true);
+    LLVMInitializeX86Target();
 
     SmallVector<const char*, 256> Args(argv, argv + argc);
 

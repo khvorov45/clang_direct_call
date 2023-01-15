@@ -50,27 +50,6 @@ extern "C" {
 
 namespace llvm {
 
-  /// InitializeAllTargetInfos - The main program should call this function if
-  /// it wants access to all available targets that LLVM is configured to
-  /// support, to make them available via the TargetRegistry.
-  ///
-  /// It is legal for a client to make multiple calls to this function.
-  inline void InitializeAllTargetInfos() {
-    RegisterTarget<Triple::x86, /*HasJIT=*/true> X(getTheX86_32Target(), "x86", "32-bit X86: Pentium-Pro and above", "X86");
-    RegisterTarget<Triple::x86_64, /*HasJIT=*/true> Y(getTheX86_64Target(), "x86-64", "64-bit X86: EM64T and AMD64", "X86");
-  }
-
-  /// InitializeAllTargets - The main program should call this function if it
-  /// wants access to all available target machines that LLVM is configured to
-  /// support, to make them available via the TargetRegistry.
-  ///
-  /// It is legal for a client to make multiple calls to this function.
-  inline void InitializeAllTargets() {
-    // FIXME: Remove this, clients should do it.
-    InitializeAllTargetInfos();
-    LLVMInitializeX86Target();
-  }
-
   /// InitializeAllTargetMCs - The main program should call this function if it
   /// wants access to all available target MC that LLVM is configured to
   /// support, to make them available via the TargetRegistry.

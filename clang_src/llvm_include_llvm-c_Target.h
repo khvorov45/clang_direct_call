@@ -64,24 +64,6 @@ typedef struct LLVMOpaqueTargetLibraryInfotData *LLVMTargetLibraryInfoRef;
 #include "llvm_include_llvm_Config_Disassemblers.def"
 #undef LLVM_DISASSEMBLER  /* Explicit undef to make SWIG happier */
 
-/** LLVMInitializeAllTargetInfos - The main program should call this function if
-    it wants access to all available targets that LLVM is configured to
-    support. */
-static inline void LLVMInitializeAllTargetInfos(void) {
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##TargetInfo();
-#include "llvm_include_llvm_Config_Targets.def"
-#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
-}
-
-/** LLVMInitializeAllTargets - The main program should call this function if it
-    wants to link in all available targets that LLVM is configured to
-    support. */
-static inline void LLVMInitializeAllTargets(void) {
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##Target();
-#include "llvm_include_llvm_Config_Targets.def"
-#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
-}
-
 /** LLVMInitializeAllTargetMCs - The main program should call this function if
     it wants access to all available target MC that LLVM is configured to
     support. */
