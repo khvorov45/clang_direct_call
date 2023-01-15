@@ -73,7 +73,7 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
-extern int cc1_main(clang::ArrayRef<const char*> Argv, const char* Argv0);
+extern int cc1_main(int argc, char** argv);
 
 extern "C" int
 clang_main(int argc, char** argv) {
@@ -125,9 +125,7 @@ clang_main(int argc, char** argv) {
         mdc_assert(argc >= 2);
         mdc_Str firstArg = mdc_STR(argv[1]);
         mdc_assert(mdc_streq(firstArg, mdc_STR("-cc1")));
-
-        clang::SmallVector<const char*, 256> Args(argv, argv + argc);
-        result = cc1_main(makeArrayRef(Args).slice(1), Args[0]);
+        result = cc1_main(argc, argv);
     }
 
     return result;

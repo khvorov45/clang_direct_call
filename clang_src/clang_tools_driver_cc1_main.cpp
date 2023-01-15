@@ -187,7 +187,11 @@ PrintSupportedCPUs(std::string TargetStr) {
 }
 
 int
-cc1_main(ArrayRef<const char*> Argv, const char* Argv0) {
+cc1_main(int argc, char** argv) {
+    const char* Argv0 = argv[0];
+    SmallVector<const char*, 256> Args(argv, argv + argc);
+    ArrayRef<const char*> Argv = makeArrayRef(Args).slice(1);
+
     ensureSufficientStack();
 
     std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
