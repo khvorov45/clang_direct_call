@@ -178,6 +178,61 @@ PrintSupportedCPUs(std::string TargetStr) {
     return 0;
 }
 
+// clang-format off
+#define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
+
+#ifndef mdc_assert
+#define mdc_assert(condition) assert(condition)
+#endif
+// clang-format on
+
+typedef struct mdc_Str {
+    const char* ptr;
+    intptr_t    len;
+} mdc_Str;
+
+bool
+mdc_memeq(const void* ptr1, const void* ptr2, intptr_t bytes) {
+    mdc_assert(bytes >= 0);
+    bool result = true;
+    for (intptr_t index = 0; index < bytes; index++) {
+        if (((uint8_t*)ptr1)[index] != ((uint8_t*)ptr2)[index]) {
+            result = false;
+            break;
+        }
+    }
+    return result;
+}
+
+intptr_t
+mdc_strlen(const char* str) {
+    intptr_t result = 0;
+    if (str) {
+        while (str[result] != '\0') {
+            result += 1;
+        }
+    }
+    return result;
+}
+
+bool
+mdc_strStartsWith(mdc_Str str, mdc_Str pattern) {
+    bool result = false;
+    if (pattern.len <= str.len) {
+        result = mdc_memeq(str.ptr, pattern.ptr, pattern.len);
+    }
+    return result;
+}
+
+bool
+mdc_streq(mdc_Str str1, mdc_Str str2) {
+    bool result = false;
+    if (str1.len == str2.len) {
+        result = mdc_memeq(str1.ptr, str2.ptr, str1.len);
+    }
+    return result;
+}
+
 static bool
 LLVMX8664MatchProc(llvm::Triple::ArchType archType) {
     bool result = archType == llvm::Triple::x86_64;
@@ -189,8 +244,11 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
-int
+extern "C" int
 cc1_main(int argc, char** argv) {
+    mdc_assert(argc >= 2);
+    mdc_assert(mdc_streq(mdc_STR(argv[1]), mdc_STR("-cc1")));
+
     // NOTE(khvorov) Init
     {
         llvm::Target& x8664Target = llvm::getTheX86_64Target();
@@ -233,9 +291,9 @@ cc1_main(int argc, char** argv) {
         llvm::initializeX86DAGToDAGISelPass(PR);
     }
 
-    const char* Argv0 = argv[0];
+    const char*                   Argv0 = argv[0];
     SmallVector<const char*, 256> Args(argv, argv + argc);
-    ArrayRef<const char*> Argv = makeArrayRef(Args).slice(1);
+    ArrayRef<const char*>         Argv = makeArrayRef(Args).slice(1);
 
     std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
     IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());

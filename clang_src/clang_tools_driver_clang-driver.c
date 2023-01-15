@@ -1,6 +1,6 @@
-int clang_main(int argc, char** argv);
+int cc1_main(int argc, char** argv);
 
 int
 main(int argc, char** argv) {
-    return clang_main(argc, argv);
+    return cc1_main(argc, argv);
 }
