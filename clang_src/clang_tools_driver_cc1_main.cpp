@@ -124,9 +124,6 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
 
 extern "C" int
 cc1_main(int argc, char** argv) {
-    mdc_assert(argc >= 2);
-    mdc_assert(mdc_streq(mdc_STR(argv[1]), mdc_STR("-cc1")));
-
     // NOTE(khvorov) Init
     {
         llvm::Target& x8664Target = llvm::getTheX86_64Target();
