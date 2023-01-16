@@ -10,10 +10,6 @@
 #include "llvm_include_llvm_MC_TargetRegistry.h"
 using namespace llvm;
 
-Target &llvm::getTheX86_32Target() {
-  static Target TheX86_32Target;
-  return TheX86_32Target;
-}
 Target &llvm::getTheX86_64Target() {
   static Target TheX86_64Target;
   return TheX86_64Target;

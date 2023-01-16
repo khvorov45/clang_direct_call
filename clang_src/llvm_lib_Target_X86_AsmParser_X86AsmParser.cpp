@@ -4978,7 +4978,6 @@ bool X86AsmParser::parseDirectiveSEHPushFrame(SMLoc Loc) {
 
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86AsmParser() {
-  RegisterMCAsmParser<X86AsmParser> X(getTheX86_32Target());
   RegisterMCAsmParser<X86AsmParser> Y(getTheX86_64Target());
 }
 

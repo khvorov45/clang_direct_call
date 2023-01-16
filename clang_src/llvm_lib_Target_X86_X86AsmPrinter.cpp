@@ -948,6 +948,5 @@ void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
 
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86AsmPrinter() {
-  RegisterAsmPrinter<X86AsmPrinter> X(getTheX86_32Target());
   RegisterAsmPrinter<X86AsmPrinter> Y(getTheX86_64Target());
 }
