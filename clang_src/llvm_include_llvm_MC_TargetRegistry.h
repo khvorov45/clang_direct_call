@@ -112,8 +112,6 @@ mca::InstrumentManager* createInstrumentManager(const MCSubtargetInfo& STI, cons
 /// will be zero initialized), and pass that instance to the TargetRegistry as
 /// part of their initialization.
 struct Target {
-    using ArchMatchFnTy = bool (*)(Triple::ArchType Arch);
-
     using MCAsmInfoCtorFnTy = MCAsmInfo* (*)(const MCRegisterInfo& MRI, const Triple& TT, const MCTargetOptions& Options);
     using MCObjectFileInfoCtorFnTy = MCObjectFileInfo* (*)(MCContext& Ctx, bool PIC, bool LargeCodeModel);
     using MCInstrInfoCtorFnTy = MCInstrInfo* (*)();
@@ -164,9 +162,6 @@ struct Target {
     /// Next - The next registered target in the linked list, maintained by the
     /// TargetRegistry.
     Target* Next;
-
-    /// The target function for checking if an architecture is supported.
-    ArchMatchFnTy ArchMatchFn;
 
     /// Name - The target name.
     const char* Name;

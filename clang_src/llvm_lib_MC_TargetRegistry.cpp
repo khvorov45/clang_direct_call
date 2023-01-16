@@ -60,27 +60,8 @@ TargetRegistry::lookupTarget(const std::string& ArchName, Triple& TheTriple, std
 
 const Target*
 TargetRegistry::lookupTarget(const std::string& TT, std::string& Error) {
-    // Provide special warning when no targets are initialized.
-    if (targets().begin() == targets().end()) {
-        Error = "Unable to find target for this triple (no targets are registered)";
-        return nullptr;
-    }
-    Triple::ArchType Arch = Triple(TT).getArch();
-    auto             ArchMatch = [&](const Target& T) { return T.ArchMatchFn(Arch); };
-    auto             I = find_if(targets(), ArchMatch);
-
-    if (I == targets().end()) {
-        Error = "No available targets are compatible with triple \"" + TT + "\"";
-        return nullptr;
-    }
-
-    auto J = std::find_if(std::next(I), targets().end(), ArchMatch);
-    if (J != targets().end()) {
-        Error = std::string("Cannot choose between targets \"") + I->Name + "\" and \"" + J->Name + "\"";
-        return nullptr;
-    }
-
-    return &*I;
+    // NOTE(khvorov) Only supporting one target for now
+    return FirstTarget;
 }
 
 void

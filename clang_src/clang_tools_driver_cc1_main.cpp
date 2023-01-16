@@ -63,12 +63,6 @@ mdc_streq(mdc_Str str1, mdc_Str str2) {
     return result;
 }
 
-static bool
-LLVMX8664MatchProc(llvm::Triple::ArchType archType) {
-    bool result = archType == llvm::Triple::x86_64;
-    return result;
-}
-
 static llvm::TargetMachine*
 LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) {
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
@@ -82,7 +76,6 @@ cc1_main(int argc, char** argv) {
         x8664Target.Name = "x86-64";
         x8664Target.ShortDesc = "64-bit X86: EM64T and AMD64";
         x8664Target.BackendName = "X86";
-        x8664Target.ArchMatchFn = LLVMX8664MatchProc;
         x8664Target.HasJIT = true;
 
         llvm::TargetRegistry::AddTarget(x8664Target);
