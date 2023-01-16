@@ -159,10 +159,6 @@ struct Target {
     using InstrumentManagerCtorTy =
         mca::InstrumentManager* (*)(const MCSubtargetInfo& STI, const MCInstrInfo& MCII);
 
-    /// Next - The next registered target in the linked list, maintained by the
-    /// TargetRegistry.
-    Target* Next;
-
     /// Name - The target name.
     const char* Name;
 
@@ -272,12 +268,6 @@ struct Target {
 
     /// @name Target Information
     /// @{
-
-    // getNext - Return the next registered target.
-    const Target*
-    getNext() const {
-        return Next;
-    }
 
     /// getName - Get the target name.
     const char*
@@ -642,62 +632,9 @@ struct TargetRegistry {
     // function).
     TargetRegistry() = delete;
 
-    class iterator {
-        friend struct TargetRegistry;
-
-        const Target* Current = nullptr;
-
-        explicit iterator(Target* T) :
-            Current(T) {}
-
-      public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = Target;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
-
-        iterator() = default;
-
-        bool
-        operator==(const iterator& x) const {
-            return Current == x.Current;
-        }
-        bool
-        operator!=(const iterator& x) const {
-            return !operator==(x);
-        }
-
-        // Iterator traversal: forward iteration only
-        iterator&
-        operator++() {  // Preincrement
-            assert(Current && "Cannot increment end iterator!");
-            Current = Current->getNext();
-            return *this;
-        }
-        iterator
-        operator++(int) {  // Postincrement
-            iterator tmp = *this;
-            ++*this;
-            return tmp;
-        }
-
-        const Target&
-        operator*() const {
-            assert(Current && "Cannot dereference end iterator!");
-            return *Current;
-        }
-
-        const Target*
-        operator->() const {
-            return &operator*();
-        }
-    };
-
     /// @name Registry Access
     /// @{
 
-    static iterator_range<iterator> targets();
     static const Target* getTarget(void);
     static void AddTarget(Target& T);
 
