@@ -137,6 +137,83 @@ LLVMTargetMachine::addAsmPrinter(PassManagerBase& PM, raw_pwrite_stream& Out, ra
     return false;
 }
 
+static llvm::MCStreamer*
+LLVMTargetCreateMCObjectStreamer(
+    const llvm::Target*                     Target,
+    const llvm::Triple&                     T,
+    llvm::MCContext&                        Ctx,
+    std::unique_ptr<llvm::MCAsmBackend>&&   TAB,
+    std::unique_ptr<llvm::MCObjectWriter>&& OW,
+    std::unique_ptr<llvm::MCCodeEmitter>&&  Emitter,
+    const llvm::MCSubtargetInfo&            STI,
+    bool                                    RelaxAll,
+    bool                                    IncrementalLinkerCompatible,
+    bool                                    DWARFMustBeAtTheEnd
+) {
+    llvm::MCStreamer* S = nullptr;
+
+    switch (T.getObjectFormat()) {
+        case llvm::Triple::UnknownObjectFormat:
+            llvm_unreachable("Unknown object format");
+
+        case llvm::Triple::COFF:
+            assert(T.isOSWindows() && "only Windows COFF is supported");
+            S = Target->COFFStreamerCtorFn(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll, IncrementalLinkerCompatible);
+            break;
+
+        case llvm::Triple::MachO:
+            if (Target->MachOStreamerCtorFn)
+                S = Target->MachOStreamerCtorFn(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll, DWARFMustBeAtTheEnd);
+            else
+                S = llvm::createMachOStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll, DWARFMustBeAtTheEnd);
+            break;
+
+        case llvm::Triple::ELF:
+            if (Target->ELFStreamerCtorFn)
+                S = Target->ELFStreamerCtorFn(T, Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            else
+                S = llvm::createELFStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            break;
+
+        case llvm::Triple::Wasm:
+            if (Target->WasmStreamerCtorFn)
+                S = Target->WasmStreamerCtorFn(T, Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            else
+                S = llvm::createWasmStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            break;
+
+        case llvm::Triple::GOFF:
+            llvm::report_fatal_error("GOFF MCObjectStreamer not implemented yet");
+
+        case llvm::Triple::XCOFF:
+            if (Target->XCOFFStreamerCtorFn)
+                S = Target->XCOFFStreamerCtorFn(T, Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            else
+                S = llvm::createXCOFFStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            break;
+
+        case llvm::Triple::SPIRV:
+            if (Target->SPIRVStreamerCtorFn)
+                S = Target->SPIRVStreamerCtorFn(T, Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            else
+                S = llvm::createSPIRVStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            break;
+
+        case llvm::Triple::DXContainer:
+            if (Target->DXContainerStreamerCtorFn)
+                S = Target->DXContainerStreamerCtorFn(T, Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            else
+                S = llvm::createDXContainerStreamer(Ctx, std::move(TAB), std::move(OW), std::move(Emitter), RelaxAll);
+            break;
+    }
+
+    if (Target->ObjectTargetStreamerCtorFn) {
+        Target->ObjectTargetStreamerCtorFn(*S, STI);
+    }
+
+    return S;
+}
+
 Expected<std::unique_ptr<MCStreamer>>
 LLVMTargetMachine::createMCStreamer(
     raw_pwrite_stream& Out,
@@ -185,7 +262,7 @@ LLVMTargetMachine::createMCStreamer(
             std::unique_ptr<MCAsmBackend> MAB(
                 getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions)
             );
-            auto FOut = std::make_unique<formatted_raw_ostream>(Out);
+            auto              FOut = std::make_unique<formatted_raw_ostream>(Out);
             llvm::MCStreamer* S = llvm::createAsmStreamer(
                 Context,
                 std::move(FOut),
@@ -214,12 +291,12 @@ LLVMTargetMachine::createMCStreamer(
                 return make_error<StringError>("createMCAsmBackend failed", inconvertibleErrorCode());
 
             Triple T(getTargetTriple().str());
-            AsmStreamer.reset(getTarget().createMCObjectStreamer(
+            AsmStreamer.reset(LLVMTargetCreateMCObjectStreamer(
+                &getTarget(),
                 T,
                 Context,
                 std::unique_ptr<MCAsmBackend>(MAB),
-                DwoOut ? MAB->createDwoObjectWriter(Out, *DwoOut)
-                       : MAB->createObjectWriter(Out),
+                DwoOut ? MAB->createDwoObjectWriter(Out, *DwoOut) : MAB->createObjectWriter(Out),
                 std::unique_ptr<MCCodeEmitter>(MCE),
                 STI,
                 Options.MCOptions.MCRelaxAll,
@@ -301,7 +378,8 @@ LLVMTargetMachine::addPassesToEmitMC(PassManagerBase& PM, MCContext*& Ctx, raw_p
         return true;
 
     const Triple&               T = getTargetTriple();
-    std::unique_ptr<MCStreamer> AsmStreamer(getTarget().createMCObjectStreamer(
+    std::unique_ptr<MCStreamer> AsmStreamer(LLVMTargetCreateMCObjectStreamer(
+        &getTarget(),
         T,
         *Ctx,
         std::unique_ptr<MCAsmBackend>(MAB),
