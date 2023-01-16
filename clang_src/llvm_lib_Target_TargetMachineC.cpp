@@ -41,25 +41,6 @@ static LLVMTargetRef wrap(const Target * P) {
   return reinterpret_cast<LLVMTargetRef>(const_cast<Target*>(P));
 }
 
-LLVMTargetRef LLVMGetFirstTarget() {
-  if (TargetRegistry::targets().begin() == TargetRegistry::targets().end()) {
-    return nullptr;
-  }
-
-  const Target *target = &*TargetRegistry::targets().begin();
-  return wrap(target);
-}
-LLVMTargetRef LLVMGetNextTarget(LLVMTargetRef T) {
-  return wrap(unwrap(T)->getNext());
-}
-
-LLVMTargetRef LLVMGetTargetFromName(const char *Name) {
-  StringRef NameRef = Name;
-  auto I = find_if(TargetRegistry::targets(),
-                   [&](const Target &T) { return T.getName() == NameRef; });
-  return I != TargetRegistry::targets().end() ? wrap(&*I) : nullptr;
-}
-
 LLVMBool LLVMGetTargetFromTriple(const char* TripleStr, LLVMTargetRef *T,
                                  char **ErrorMessage) {
   std::string Error;

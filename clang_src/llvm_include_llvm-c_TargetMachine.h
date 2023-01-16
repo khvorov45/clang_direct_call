@@ -66,15 +66,7 @@ typedef enum {
     LLVMObjectFile
 } LLVMCodeGenFileType;
 
-/** Returns the first llvm::Target in the registered targets list. */
-LLVMTargetRef LLVMGetFirstTarget(void);
-/** Returns the next llvm::Target given a previous one (or null if there's none) */
-LLVMTargetRef LLVMGetNextTarget(LLVMTargetRef T);
-
 /*===-- Target ------------------------------------------------------------===*/
-/** Finds the target corresponding to the given name and stores it in \p T.
-  Returns 0 on success. */
-LLVMTargetRef LLVMGetTargetFromName(const char *Name);
 
 /** Finds the target corresponding to the given triple and stores it in \p T.
   Returns 0 on success. Optionally returns any error in ErrorMessage.

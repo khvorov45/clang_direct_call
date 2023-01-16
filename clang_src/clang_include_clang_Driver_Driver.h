@@ -425,15 +425,6 @@ public:
   /// current compilation. Also, update the host tool chain kind accordingly.
   void CreateOffloadingDeviceToolChains(Compilation &C, InputList &Inputs);
 
-  /// BuildCompilation - Construct a compilation object for a command
-  /// line argument vector.
-  ///
-  /// \return A compilation, or 0 if none was built for the given
-  /// argument vector. A null return value does not necessarily
-  /// indicate an error condition, the diagnostics should be queried
-  /// to determine if an error occurred.
-  Compilation *BuildCompilation(ArrayRef<const char *> Args);
-
   /// ParseArgStrings - Parse the given list of strings into an
   /// ArgList.
   llvm::opt::InputArgList ParseArgStrings(ArrayRef<const char *> Args,
@@ -587,13 +578,6 @@ public:
   /// possible flags, descriptions, and its arguments.
   void HandleAutocompletions(StringRef PassedFlags) const;
 
-  /// HandleImmediateArgs - Handle any arguments which should be
-  /// treated before building actions or binding tools.
-  ///
-  /// \return Whether any compilation should be built for this
-  /// invocation.
-  bool HandleImmediateArgs(const Compilation &C);
-
   /// ConstructAction - Construct the appropriate action to do for
   /// \p Phase on the \p Input, taking in to account arguments
   /// like -fsyntax-only or --analyze.
@@ -678,17 +662,6 @@ public:
   }
 
 private:
-
-  /// Tries to load options from configuration files.
-  ///
-  /// \returns true if error occurred.
-  bool loadConfigFiles();
-
-  /// Tries to load options from default configuration files (deduced from
-  /// executable filename).
-  ///
-  /// \returns true if error occurred.
-  bool loadDefaultConfigFiles(llvm::cl::ExpansionContext &ExpCtx);
 
   /// Read options from the specified file.
   ///
