@@ -691,44 +691,18 @@ createX86MCInstrAnalysis(const MCInstrInfo* Info) {
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void
 LLVMInitializeX86TargetMC() {
-    for (Target* T : {LLVMTargetRegistryTheTarget}) {
-        // Register the MC asm info.
-        RegisterMCAsmInfoFn X(*T, createX86MCAsmInfo);
-
-        // Register the MC instruction info.
-        TargetRegistry::RegisterMCInstrInfo(*T, createX86MCInstrInfo);
-
-        // Register the MC register info.
-        TargetRegistry::RegisterMCRegInfo(*T, createX86MCRegisterInfo);
-
-        // Register the MC subtarget info.
-        TargetRegistry::RegisterMCSubtargetInfo(*T, X86_MC::createX86MCSubtargetInfo);
-
-        // Register the MC instruction analyzer.
-        TargetRegistry::RegisterMCInstrAnalysis(*T, createX86MCInstrAnalysis);
-
-        // Register the code emitter.
-        TargetRegistry::RegisterMCCodeEmitter(*T, createX86MCCodeEmitter);
-
-        // Register the obj target streamer.
-        TargetRegistry::RegisterObjectTargetStreamer(*T, createX86ObjectTargetStreamer);
-
-        // Register the asm target streamer.
-        TargetRegistry::RegisterAsmTargetStreamer(*T, createX86AsmTargetStreamer);
-
-        // Register the null streamer.
-        TargetRegistry::RegisterNullTargetStreamer(*T, createX86NullTargetStreamer);
-
-        TargetRegistry::RegisterCOFFStreamer(*T, createX86WinCOFFStreamer);
-
-        // Register the MCInstPrinter.
-        TargetRegistry::RegisterMCInstPrinter(*T, createX86MCInstPrinter);
-
-        // Register the MC relocation info.
-        TargetRegistry::RegisterMCRelocationInfo(*T, createX86MCRelocationInfo);
-    }
-
-    // Register the asm backend.
+    TargetRegistry::RegisterMCAsmInfo(*LLVMTargetRegistryTheTarget, createX86MCAsmInfo);
+    TargetRegistry::RegisterMCInstrInfo(*LLVMTargetRegistryTheTarget, createX86MCInstrInfo);
+    TargetRegistry::RegisterMCRegInfo(*LLVMTargetRegistryTheTarget, createX86MCRegisterInfo);
+    TargetRegistry::RegisterMCSubtargetInfo(*LLVMTargetRegistryTheTarget, X86_MC::createX86MCSubtargetInfo);
+    TargetRegistry::RegisterMCInstrAnalysis(*LLVMTargetRegistryTheTarget, createX86MCInstrAnalysis);
+    TargetRegistry::RegisterMCCodeEmitter(*LLVMTargetRegistryTheTarget, createX86MCCodeEmitter);
+    TargetRegistry::RegisterObjectTargetStreamer(*LLVMTargetRegistryTheTarget, createX86ObjectTargetStreamer);
+    TargetRegistry::RegisterAsmTargetStreamer(*LLVMTargetRegistryTheTarget, createX86AsmTargetStreamer);
+    TargetRegistry::RegisterNullTargetStreamer(*LLVMTargetRegistryTheTarget, createX86NullTargetStreamer);
+    TargetRegistry::RegisterCOFFStreamer(*LLVMTargetRegistryTheTarget, createX86WinCOFFStreamer);
+    TargetRegistry::RegisterMCInstPrinter(*LLVMTargetRegistryTheTarget, createX86MCInstPrinter);
+    TargetRegistry::RegisterMCRelocationInfo(*LLVMTargetRegistryTheTarget, createX86MCRelocationInfo);
     TargetRegistry::RegisterMCAsmBackend(*LLVMTargetRegistryTheTarget, createX86_64AsmBackend);
 }
 

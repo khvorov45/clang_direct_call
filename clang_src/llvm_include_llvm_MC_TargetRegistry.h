@@ -954,20 +954,6 @@ struct RegisterMCAsmInfo {
     }
 };
 
-/// RegisterMCAsmInfoFn - Helper template for registering a target assembly info
-/// implementation.  This invokes the specified function to do the
-/// construction.  Usage:
-///
-/// extern "C" void LLVMInitializeFooTarget() {
-///   extern Target TheFooTarget;
-///   RegisterMCAsmInfoFn X(TheFooTarget, TheFunction);
-/// }
-struct RegisterMCAsmInfoFn {
-    RegisterMCAsmInfoFn(Target& T, Target::MCAsmInfoCtorFnTy Fn) {
-        TargetRegistry::RegisterMCAsmInfo(T, Fn);
-    }
-};
-
 /// Helper template for registering a target object file info implementation.
 /// This invokes the static "Create" method on the class to actually do the
 /// construction.  Usage:
