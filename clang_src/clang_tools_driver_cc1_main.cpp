@@ -79,7 +79,13 @@ cc1_main(int argc, char** argv) {
     // NOTE(khvorov) Init
     {
         llvm::Target& x8664Target = llvm::getTheX86_64Target();
-        llvm::TargetRegistry::RegisterTarget(x8664Target, "x86-64", "64-bit X86: EM64T and AMD64", "X86", LLVMX8664MatchProc, true);
+        x8664Target.Name = "x86-64";
+        x8664Target.ShortDesc = "64-bit X86: EM64T and AMD64";
+        x8664Target.BackendName = "X86";
+        x8664Target.ArchMatchFn = LLVMX8664MatchProc;
+        x8664Target.HasJIT = true;
+
+        llvm::TargetRegistry::AddTarget(x8664Target);
         llvm::TargetRegistry::RegisterTargetMachine(x8664Target, LLVMX86TargetMachineProc);
 
         llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();
