@@ -317,8 +317,7 @@ bool InstructionSelect::runOnMachineFunction(MachineFunction &MF) {
       dbgs() << " id" << RuleID;
     dbgs() << "\n\n";
   });
-  CoverageInfo.emit(CoveragePrefix,
-                    TLI.getTargetMachine().getTarget().getBackendName());
+  CoverageInfo.emit(CoveragePrefix, TLI.getTargetMachine().getTarget().BackendName);
 
   // If we successfully selected the function nothing is going to use the vreg
   // types after us (otherwise MIRPrinter would need them). Make sure the types

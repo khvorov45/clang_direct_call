@@ -74,21 +74,6 @@ typedef enum {
 LLVMBool LLVMGetTargetFromTriple(const char* Triple, LLVMTargetRef *T,
                                  char **ErrorMessage);
 
-/** Returns the name of a target. See llvm::Target::getName */
-const char *LLVMGetTargetName(LLVMTargetRef T);
-
-/** Returns the description  of a target. See llvm::Target::getDescription */
-const char *LLVMGetTargetDescription(LLVMTargetRef T);
-
-/** Returns if the target has a JIT */
-LLVMBool LLVMTargetHasJIT(LLVMTargetRef T);
-
-/** Returns if the target has a TargetMachine associated */
-LLVMBool LLVMTargetHasTargetMachine(LLVMTargetRef T);
-
-/** Returns if the target as an ASM backend (required for emitting output) */
-LLVMBool LLVMTargetHasAsmBackend(LLVMTargetRef T);
-
 /*===-- Target Machine ----------------------------------------------------===*/
 /** Creates a new llvm::TargetMachine. See llvm::Target::createTargetMachine */
 LLVMTargetMachineRef LLVMCreateTargetMachine(LLVMTargetRef T,

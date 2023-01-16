@@ -78,9 +78,9 @@ cc1_main(int argc, char** argv) {
         x8664Target.ShortDesc = "64-bit X86: EM64T and AMD64";
         x8664Target.BackendName = "X86";
         x8664Target.HasJIT = true;
+        x8664Target.TargetMachineCtorFn = LLVMX86TargetMachineProc;
 
         LLVMTargetRegistryTheTarget = &x8664Target;
-        llvm::TargetRegistry::RegisterTargetMachine(x8664Target, LLVMX86TargetMachineProc);
 
         llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();
         llvm::initializeX86LowerAMXIntrinsicsLegacyPassPass(PR);

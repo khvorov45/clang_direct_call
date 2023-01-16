@@ -57,26 +57,6 @@ LLVMBool LLVMGetTargetFromTriple(const char* TripleStr, LLVMTargetRef *T,
   return 0;
 }
 
-const char * LLVMGetTargetName(LLVMTargetRef T) {
-  return unwrap(T)->getName();
-}
-
-const char * LLVMGetTargetDescription(LLVMTargetRef T) {
-  return unwrap(T)->getShortDescription();
-}
-
-LLVMBool LLVMTargetHasJIT(LLVMTargetRef T) {
-  return unwrap(T)->hasJIT();
-}
-
-LLVMBool LLVMTargetHasTargetMachine(LLVMTargetRef T) {
-  return unwrap(T)->hasTargetMachine();
-}
-
-LLVMBool LLVMTargetHasAsmBackend(LLVMTargetRef T) {
-  return unwrap(T)->hasMCAsmBackend();
-}
-
 LLVMTargetMachineRef LLVMCreateTargetMachine(LLVMTargetRef T,
         const char *Triple, const char *CPU, const char *Features,
         LLVMCodeGenOptLevel Level, LLVMRelocMode Reloc,
