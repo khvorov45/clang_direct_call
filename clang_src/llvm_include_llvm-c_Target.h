@@ -60,24 +60,6 @@ typedef struct LLVMOpaqueTargetLibraryInfotData *LLVMTargetLibraryInfoRef;
 #include "llvm_include_llvm_Config_Disassemblers.def"
 #undef LLVM_DISASSEMBLER  /* Explicit undef to make SWIG happier */
 
-/** LLVMInitializeAllTargetMCs - The main program should call this function if
-    it wants access to all available target MC that LLVM is configured to
-    support. */
-static inline void LLVMInitializeAllTargetMCs(void) {
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##TargetMC();
-#include "llvm_include_llvm_Config_Targets.def"
-#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
-}
-
-/** LLVMInitializeAllAsmPrinters - The main program should call this function if
-    it wants all asm printers that LLVM is configured to support, to make them
-    available via the TargetRegistry. */
-static inline void LLVMInitializeAllAsmPrinters(void) {
-#define LLVM_ASM_PRINTER(TargetName) LLVMInitialize##TargetName##AsmPrinter();
-#include "llvm_include_llvm_Config_AsmPrinters.def"
-#undef LLVM_ASM_PRINTER  /* Explicit undef to make SWIG happier */
-}
-
 /** LLVMInitializeAllDisassemblers - The main program should call this function
     if it wants all disassemblers that LLVM is configured to support, to make
     them available via the TargetRegistry. */

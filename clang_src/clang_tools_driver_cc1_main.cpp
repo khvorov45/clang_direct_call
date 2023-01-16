@@ -1,44 +1,12 @@
 #include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_X86TargetMachine.h"
 #include "llvm_lib_Target_X86_X86.h"
-
 #include "llvm_include_llvm_InitializePasses.h"
-
-#include "clang_include_clang_Basic_TargetOptions.h"
-#include "clang_include_clang_CodeGen_ObjectFilePCHContainerOperations.h"
-#include "clang_include_clang_Config_config.h"
-#include "clang_include_clang_Driver_DriverDiagnostic.h"
-#include "clang_include_clang_Driver_Options.h"
-#include "clang_include_clang_Frontend_CompilerInstance.h"
-#include "clang_include_clang_Frontend_CompilerInvocation.h"
-#include "clang_include_clang_Frontend_FrontendDiagnostic.h"
-#include "clang_include_clang_Frontend_TextDiagnosticBuffer.h"
-#include "clang_include_clang_Frontend_TextDiagnosticPrinter.h"
-#include "clang_include_clang_Frontend_Utils.h"
-#include "clang_include_clang_FrontendTool_Utils.h"
-#include "llvm_include_llvm_ADT_Statistic.h"
-#include "llvm_include_llvm_Config_llvm-config.h"
-#include "llvm_include_llvm_LinkAllPasses.h"
-#include "llvm_include_llvm_MC_TargetRegistry.h"
-#include "llvm_include_llvm_Option_Arg.h"
-#include "llvm_include_llvm_Option_ArgList.h"
-#include "llvm_include_llvm_Option_OptTable.h"
-#include "llvm_include_llvm_Support_BuryPointer.h"
-#include "llvm_include_llvm_Support_Compiler.h"
-#include "llvm_include_llvm_Support_ErrorHandling.h"
-#include "llvm_include_llvm_Support_ManagedStatic.h"
-#include "llvm_include_llvm_Support_Path.h"
-#include "llvm_include_llvm_Support_Process.h"
-#include "llvm_include_llvm_Support_Signals.h"
 #include "llvm_include_llvm_Support_TargetSelect.h"
-#include "llvm_include_llvm_Support_TimeProfiler.h"
-#include "llvm_include_llvm_Support_Timer.h"
-#include "llvm_include_llvm_Support_raw_ostream.h"
-#include "llvm_include_llvm_Target_TargetMachine.h"
-#include <cstdio>
-
-using namespace clang;
-using namespace llvm::opt;
+#include "clang_include_clang_CodeGen_ObjectFilePCHContainerOperations.h"
+#include "clang_include_clang_Frontend_CompilerInstance.h"
+#include "clang_include_clang_Frontend_TextDiagnosticBuffer.h"
+#include "clang_include_clang_FrontendTool_Utils.h"
 
 // clang-format off
 #define mdc_STR(x) (mdc_Str) { x, mdc_strlen(x) }
@@ -148,28 +116,27 @@ cc1_main(int argc, char** argv) {
         llvm::initializePseudoProbeInserterPass(PR);
         llvm::initializeX86ReturnThunksPass(PR);
         llvm::initializeX86DAGToDAGISelPass(PR);
+
+        LLVMInitializeX86TargetMC();
+        LLVMInitializeX86AsmPrinter();
+        LLVMInitializeX86AsmParser();
     }
 
-    std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
-    IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+    std::unique_ptr<clang::CompilerInstance>        Clang(new clang::CompilerInstance());
+    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
 
     // Register the support for object-file-wrapped Clang modules.
     auto PCHOps = Clang->getPCHContainerOperations();
-    PCHOps->registerWriter(std::make_unique<ObjectFilePCHContainerWriter>());
-    PCHOps->registerReader(std::make_unique<ObjectFilePCHContainerReader>());
-
-    // Initialize targets first, so that --version shows registered targets.
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmPrinters();
-    llvm::InitializeAllAsmParsers();
+    PCHOps->registerWriter(std::make_unique<clang::ObjectFilePCHContainerWriter>());
+    PCHOps->registerReader(std::make_unique<clang::ObjectFilePCHContainerReader>());
 
     // Buffer diagnostics from argument parsing so that we can output them using a
     // well formed diagnostic object.
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-    TextDiagnosticBuffer*                 DiagsBuffer = new TextDiagnosticBuffer;
-    DiagnosticsEngine                     Diags(DiagID, &*DiagOpts, DiagsBuffer);
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts = new clang::DiagnosticOptions();
+    clang::TextDiagnosticBuffer*                        DiagsBuffer = new clang::TextDiagnosticBuffer;
+    clang::DiagnosticsEngine                            Diags(DiagID, &*DiagOpts, DiagsBuffer);
 
-    bool Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Diags, argc, argv);
+    bool Success = clang::CompilerInvocation::CreateFromArgs(Clang->getInvocation(), Diags, argc, argv);
 
     Clang->createDiagnostics();
     Success = Clang->hasDiagnostics();

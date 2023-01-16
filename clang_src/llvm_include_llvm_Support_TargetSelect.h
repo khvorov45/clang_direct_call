@@ -47,35 +47,6 @@ extern "C" {
 
 namespace llvm {
 
-  /// InitializeAllTargetMCs - The main program should call this function if it
-  /// wants access to all available target MC that LLVM is configured to
-  /// support, to make them available via the TargetRegistry.
-  ///
-  /// It is legal for a client to make multiple calls to this function.
-  inline void InitializeAllTargetMCs() {
-#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##TargetMC();
-#include "llvm_include_llvm_Config_Targets.def"
-  }
-
-  /// InitializeAllAsmPrinters - The main program should call this function if
-  /// it wants all asm printers that LLVM is configured to support, to make them
-  /// available via the TargetRegistry.
-  ///
-  /// It is legal for a client to make multiple calls to this function.
-  inline void InitializeAllAsmPrinters() {
-#define LLVM_ASM_PRINTER(TargetName) LLVMInitialize##TargetName##AsmPrinter();
-#include "llvm_include_llvm_Config_AsmPrinters.def"
-  }
-
-  /// InitializeAllAsmParsers - The main program should call this function if it
-  /// wants all asm parsers that LLVM is configured to support, to make them
-  /// available via the TargetRegistry.
-  ///
-  /// It is legal for a client to make multiple calls to this function.
-  inline void InitializeAllAsmParsers() {
-    LLVMInitializeX86AsmParser();
-  }
-
   /// InitializeAllDisassemblers - The main program should call this function if
   /// it wants all disassemblers that LLVM is configured to support, to make
   /// them available via the TargetRegistry.
