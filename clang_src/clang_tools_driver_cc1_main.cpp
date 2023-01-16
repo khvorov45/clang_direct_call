@@ -78,7 +78,7 @@ cc1_main(int argc, char** argv) {
         x8664Target.BackendName = "X86";
         x8664Target.HasJIT = true;
 
-        llvm::TargetRegistry::AddTarget(x8664Target);
+        llvm::TargetRegistry::setTarget(x8664Target);
         llvm::TargetRegistry::RegisterTargetMachine(x8664Target, LLVMX86TargetMachineProc);
 
         llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();

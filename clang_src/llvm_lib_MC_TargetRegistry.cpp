@@ -8,6 +8,6 @@ llvm::TargetRegistry::getTarget(void) {
 }
 
 void
-llvm::TargetRegistry::AddTarget(llvm::Target& T) {
+llvm::TargetRegistry::setTarget(llvm::Target& T) {
     TheTarget = &T;
 }

@@ -636,7 +636,7 @@ struct TargetRegistry {
     /// @{
 
     static const Target* getTarget(void);
-    static void AddTarget(Target& T);
+    static void setTarget(Target& T);
 
     /// RegisterMCAsmInfo - Register a MCAsmInfo implementation for the
     /// given target.
