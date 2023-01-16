@@ -185,8 +185,8 @@ LLVMTargetMachine::createMCStreamer(
             std::unique_ptr<MCAsmBackend> MAB(
                 getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions)
             );
-            auto        FOut = std::make_unique<formatted_raw_ostream>(Out);
-            MCStreamer* S = getTarget().createAsmStreamer(
+            auto FOut = std::make_unique<formatted_raw_ostream>(Out);
+            llvm::MCStreamer* S = llvm::createAsmStreamer(
                 Context,
                 std::move(FOut),
                 Options.MCOptions.AsmVerbose,
@@ -196,6 +196,9 @@ LLVMTargetMachine::createMCStreamer(
                 std::move(MAB),
                 Options.MCOptions.ShowMCInst
             );
+            if (getTarget().AsmTargetStreamerCtorFn) {
+                getTarget().AsmTargetStreamerCtorFn(*S, *FOut, InstPrinter, Options.MCOptions.AsmVerbose);
+            }
             AsmStreamer.reset(S);
             break;
         }

@@ -355,30 +355,6 @@ struct Target {
     }
 
     MCStreamer*
-    createAsmStreamer(MCContext& Ctx, std::unique_ptr<formatted_raw_ostream> OS, bool IsVerboseAsm, bool UseDwarfDirectory, MCInstPrinter* InstPrint, std::unique_ptr<MCCodeEmitter>&& CE, std::unique_ptr<MCAsmBackend>&& TAB, bool ShowInst) const {
-        formatted_raw_ostream& OSRef = *OS;
-        MCStreamer*            S = llvm::createAsmStreamer(
-            Ctx,
-            std::move(OS),
-            IsVerboseAsm,
-            UseDwarfDirectory,
-            InstPrint,
-            std::move(CE),
-            std::move(TAB),
-            ShowInst
-        );
-        createAsmTargetStreamer(*S, OSRef, InstPrint, IsVerboseAsm);
-        return S;
-    }
-
-    MCTargetStreamer*
-    createAsmTargetStreamer(MCStreamer& S, formatted_raw_ostream& OS, MCInstPrinter* InstPrint, bool IsVerboseAsm) const {
-        if (AsmTargetStreamerCtorFn)
-            return AsmTargetStreamerCtorFn(S, OS, InstPrint, IsVerboseAsm);
-        return nullptr;
-    }
-
-    MCStreamer*
     createNullStreamer(MCContext& Ctx) const {
         MCStreamer* S = llvm::createNullStreamer(Ctx);
         createNullTargetStreamer(*S);
