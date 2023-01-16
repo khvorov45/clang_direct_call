@@ -702,27 +702,7 @@ struct TargetRegistry {
     /// @{
 
     static iterator_range<iterator> targets();
-
-    /// lookupTarget - Lookup a target based on a target triple.
-    ///
-    /// \param Triple - The triple to use for finding a target.
-    /// \param Error - On failure, an error string describing why no target was
-    /// found.
-    static const Target* lookupTarget(const std::string& Triple, std::string& Error);
-
-    /// lookupTarget - Lookup a target based on an architecture name
-    /// and a target triple.  If the architecture name is non-empty,
-    /// then the lookup is done by architecture.  Otherwise, the target
-    /// triple is used.
-    ///
-    /// \param ArchName - The architecture to use for finding a target.
-    /// \param TheTriple - The triple to use for finding a target.  The
-    /// triple is updated with canonical architecture name if a lookup
-    /// by architecture is done.
-    /// \param Error - On failure, an error string describing why no target was
-    /// found.
-    static const Target* lookupTarget(const std::string& ArchName, Triple& TheTriple, std::string& Error);
-
+    static const Target* getTarget(void);
     static void AddTarget(Target& T);
 
     /// RegisterMCAsmInfo - Register a MCAsmInfo implementation for the

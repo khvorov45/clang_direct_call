@@ -48,7 +48,7 @@ LLVMCreateDisasmCPUFeatures(const char *TT, const char *CPU,
                             LLVMSymbolLookupCallback SymbolLookUp) {
   // Get the target.
   std::string Error;
-  const Target *TheTarget = TargetRegistry::lookupTarget(TT, Error);
+  const Target *TheTarget = TargetRegistry::getTarget();
   if (!TheTarget)
     return nullptr;
 

@@ -623,7 +623,7 @@ std::vector<std::pair<std::optional<DataRefImpl>, uint64_t>>
 ELFObjectFileBase::getPltAddresses() const {
   std::string Err;
   const auto Triple = makeTriple();
-  const auto *T = TargetRegistry::lookupTarget(Triple.str(), Err);
+  const auto *T = TargetRegistry::getTarget();
   if (!T)
     return {};
   uint64_t JumpSlotReloc = 0;

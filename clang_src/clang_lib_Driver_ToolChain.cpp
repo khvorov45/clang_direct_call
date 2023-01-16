@@ -260,7 +260,7 @@ ToolChain::getTargetAndModeFromProgramName(StringRef PN) {
   Prefix = Prefix.slice(0, LastComponent);
   std::string IgnoredError;
   bool IsRegistered =
-      llvm::TargetRegistry::lookupTarget(std::string(Prefix), IgnoredError);
+      llvm::TargetRegistry::getTarget();
   return ParsedClangName{std::string(Prefix), ModeSuffix, DS->ModeFlag,
                          IsRegistered};
 }

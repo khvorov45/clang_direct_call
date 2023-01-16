@@ -15,59 +15,22 @@
 using namespace llvm;
 
 // Clients are responsible for avoid race conditions in registration.
-static Target* FirstTarget = nullptr;
+static Target* TheTarget = nullptr;
 
 iterator_range<TargetRegistry::iterator>
 TargetRegistry::targets() {
-    return make_range(iterator(FirstTarget), iterator());
+    return make_range(iterator(TheTarget), iterator());
 }
 
 const Target*
-TargetRegistry::lookupTarget(const std::string& ArchName, Triple& TheTriple, std::string& Error) {
-    // Allocate target machine.  First, check whether the user has explicitly
-    // specified an architecture to compile for. If so we have to look it up by
-    // name, because it might be a backend that has no mapping to a target triple.
-    const Target* TheTarget = nullptr;
-    if (!ArchName.empty()) {
-        auto I = find_if(targets(), [&](const Target& T) { return ArchName == T.getName(); });
-
-        if (I == targets().end()) {
-            Error = "invalid target '" + ArchName + "'.\n";
-            return nullptr;
-        }
-
-        TheTarget = &*I;
-
-        // Adjust the triple to match (if known), otherwise stick with the
-        // given triple.
-        Triple::ArchType Type = Triple::getArchTypeForLLVMName(ArchName);
-        if (Type != Triple::UnknownArch)
-            TheTriple.setArch(Type);
-    } else {
-        // Get the target specific parser.
-        std::string TempError;
-        TheTarget = TargetRegistry::lookupTarget(TheTriple.getTriple(), TempError);
-        if (!TheTarget) {
-            Error = "unable to get target for '"
-                + TheTriple.getTriple()
-                + "', see --version and --triple.\n";
-            return nullptr;
-        }
-    }
-
+TargetRegistry::getTarget(void) {
     return TheTarget;
-}
-
-const Target*
-TargetRegistry::lookupTarget(const std::string& TT, std::string& Error) {
-    // NOTE(khvorov) Only supporting one target for now
-    return FirstTarget;
 }
 
 void
 TargetRegistry::AddTarget(Target& T) {
-    T.Next = FirstTarget;
-    FirstTarget = &T;
+    T.Next = TheTarget;
+    TheTarget = &T;
 }
 
 static int

@@ -567,7 +567,7 @@ void EmitAssemblyHelper::CreateTargetMachine(bool MustCreateTM) {
   // Create the TargetMachine for generating code.
   std::string Error;
   std::string Triple = TheModule->getTargetTriple();
-  const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Triple, Error);
+  const llvm::Target *TheTarget = TargetRegistry::getTarget();
   if (!TheTarget) {
     if (MustCreateTM)
       Diags.Report(diag::err_fe_unable_to_create_target) << Error;
