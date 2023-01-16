@@ -176,19 +176,6 @@ struct Target {
 
     Target() = default;
 
-    /// Create a MCObjectFileInfo implementation for the specified target
-    /// triple.
-    ///
-    MCObjectFileInfo*
-    createMCObjectFileInfo(MCContext& Ctx, bool PIC, bool LargeCodeModel = false) const {
-        if (!MCObjectFileInfoCtorFn) {
-            MCObjectFileInfo* MOFI = new MCObjectFileInfo();
-            MOFI->initMCObjectFileInfo(Ctx, PIC, LargeCodeModel);
-            return MOFI;
-        }
-        return MCObjectFileInfoCtorFn(Ctx, PIC, LargeCodeModel);
-    }
-
     /// createMCInstrInfo - Create a MCInstrInfo implementation.
     ///
     MCInstrInfo*
@@ -470,5 +457,12 @@ struct Target {
 }  // end namespace llvm
 
 extern llvm::Target* LLVMTargetRegistryTheTarget;
+
+static inline llvm::MCObjectFileInfo*
+LLVMTargetCreateMCObjectFileInfo(llvm::MCContext& Ctx) {
+    llvm::MCObjectFileInfo* MOFI = new llvm::MCObjectFileInfo();
+    MOFI->initMCObjectFileInfo(Ctx, false, false);
+    return MOFI;
+}
 
 #endif  // LLVM_MC_TARGETREGISTRY_H

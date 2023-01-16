@@ -103,9 +103,7 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     SrcMgr.AddNewSourceBuffer(std::move(Buffer), SMLoc());
 
     MCContext                         MCCtx(TT, MAI.get(), MRI.get(), STI.get(), &SrcMgr);
-    std::unique_ptr<MCObjectFileInfo> MOFI(
-        T->createMCObjectFileInfo(MCCtx, /*PIC=*/false)
-    );
+    std::unique_ptr<MCObjectFileInfo> MOFI(LLVMTargetCreateMCObjectFileInfo(MCCtx));
     MOFI->setSDKVersion(M.getSDKVersion());
     MCCtx.setObjectFileInfo(MOFI.get());
     RecordStreamer Streamer(MCCtx, M);

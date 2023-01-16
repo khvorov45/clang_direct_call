@@ -585,9 +585,7 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
 
     llvm::SourceMgr                         TempSrcMgr;
     llvm::MCContext                         Ctx(TheTriple, MAI.get(), MRI.get(), STI.get(), &TempSrcMgr);
-    std::unique_ptr<llvm::MCObjectFileInfo> MOFI(
-        TheTarget->createMCObjectFileInfo(Ctx, /*PIC=*/false)
-    );
+    std::unique_ptr<llvm::MCObjectFileInfo> MOFI(LLVMTargetCreateMCObjectFileInfo(Ctx));
     Ctx.setObjectFileInfo(MOFI.get());
 
     std::unique_ptr<llvm::MemoryBuffer> Buffer =
