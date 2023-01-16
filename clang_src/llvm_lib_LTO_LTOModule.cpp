@@ -207,7 +207,7 @@ LTOModule::makeLTOModule(MemoryBufferRef Buffer, const TargetOptions &options,
 
   // find machine architecture for this module
   std::string errMsg;
-  const Target *march = TargetRegistry::getTarget();
+  const Target *march = LLVMTargetRegistryTheTarget;
   if (!march)
     return make_error_code(object::object_error::arch_not_found);
 

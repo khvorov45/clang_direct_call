@@ -635,9 +635,6 @@ struct TargetRegistry {
     /// @name Registry Access
     /// @{
 
-    static const Target* getTarget(void);
-    static void setTarget(Target& T);
-
     /// RegisterMCAsmInfo - Register a MCAsmInfo implementation for the
     /// given target.
     ///
@@ -1250,5 +1247,7 @@ struct RegisterMCCodeEmitter {
 };
 
 }  // end namespace llvm
+
+extern llvm::Target* LLVMTargetRegistryTheTarget;
 
 #endif  // LLVM_MC_TARGETREGISTRY_H

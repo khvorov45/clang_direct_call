@@ -75,7 +75,7 @@ initializeRecordStreamer(const Module &M,
 
   std::string Err;
   const Triple TT(M.getTargetTriple());
-  const Target *T = TargetRegistry::getTarget();
+  const Target *T = LLVMTargetRegistryTheTarget;
   assert(T && T->hasMCAsmParser());
 
   std::unique_ptr<MCRegisterInfo> MRI(T->createMCRegInfo(TT.str()));

@@ -4806,7 +4806,7 @@ void BitcodeWriter::writeSymtab() {
 
     std::string Err;
     const Triple TT(M->getTargetTriple());
-    const Target *T = TargetRegistry::getTarget();
+    const Target *T = LLVMTargetRegistryTheTarget;
     if (!T || !T->hasMCAsmParser())
       return;
   }

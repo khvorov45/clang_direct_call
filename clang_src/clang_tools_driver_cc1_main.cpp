@@ -68,6 +68,8 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
+llvm::Target* LLVMTargetRegistryTheTarget = nullptr;
+
 extern "C" int
 cc1_main(int argc, char** argv) {
     // NOTE(khvorov) Init
@@ -78,7 +80,7 @@ cc1_main(int argc, char** argv) {
         x8664Target.BackendName = "X86";
         x8664Target.HasJIT = true;
 
-        llvm::TargetRegistry::setTarget(x8664Target);
+        LLVMTargetRegistryTheTarget = &x8664Target;
         llvm::TargetRegistry::RegisterTargetMachine(x8664Target, LLVMX86TargetMachineProc);
 
         llvm::PassRegistry& PR = *llvm::PassRegistry::getPassRegistry();

@@ -537,7 +537,7 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     Diag(AsmLoc, diag::err_msasm_unsupported_arch) << TheTriple.getArchName();
   } else {
     std::string Error;
-    TheTarget = llvm::TargetRegistry::getTarget();
+    TheTarget = LLVMTargetRegistryTheTarget;
     if (!TheTarget)
       Diag(AsmLoc, diag::err_msasm_unable_to_create_target) << Error;
   }
