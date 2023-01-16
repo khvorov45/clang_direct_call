@@ -176,20 +176,6 @@ struct Target {
 
     Target() = default;
 
-    /// createMCAsmInfo - Create a MCAsmInfo implementation for the specified
-    /// target triple.
-    ///
-    /// \param TheTriple This argument is used to determine the target machine
-    /// feature set; it should always be provided. Generally this should be
-    /// either the target triple from the module, or the target triple of the
-    /// host if that does not exist.
-    MCAsmInfo*
-    createMCAsmInfo(const MCRegisterInfo& MRI, StringRef TheTriple, const MCTargetOptions& Options) const {
-        if (!MCAsmInfoCtorFn)
-            return nullptr;
-        return MCAsmInfoCtorFn(MRI, Triple(TheTriple), Options);
-    }
-
     /// Create a MCObjectFileInfo implementation for the specified target
     /// triple.
     ///
