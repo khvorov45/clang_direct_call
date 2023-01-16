@@ -1,4 +1,3 @@
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_X86TargetMachine.h"
 #include "llvm_lib_Target_X86_X86.h"
 #include "llvm_include_llvm_InitializePasses.h"
@@ -68,13 +67,13 @@ LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::St
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
-llvm::Target* LLVMTargetRegistryTheTarget = nullptr;
+llvm::Target* LLVMTargetRegistryTheTarget = 0;
 
 extern "C" int
 cc1_main(int argc, char** argv) {
     // NOTE(khvorov) Init
+    llvm::Target x8664Target;
     {
-        llvm::Target& x8664Target = llvm::getTheX86_64Target();
         x8664Target.Name = "x86-64";
         x8664Target.ShortDesc = "64-bit X86: EM64T and AMD64";
         x8664Target.BackendName = "X86";

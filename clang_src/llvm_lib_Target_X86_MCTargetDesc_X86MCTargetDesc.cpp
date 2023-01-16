@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm_lib_Target_X86_MCTargetDesc_X86MCTargetDesc.h"
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86ATTInstPrinter.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86BaseInfo.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86IntelInstPrinter.h"
@@ -695,7 +694,7 @@ static MCInstrAnalysis *createX86MCInstrAnalysis(const MCInstrInfo *Info) {
 
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86TargetMC() {
-  for (Target *T : {&getTheX86_64Target()}) {
+  for (Target *T : {LLVMTargetRegistryTheTarget}) {
     // Register the MC asm info.
     RegisterMCAsmInfoFn X(*T, createX86MCAsmInfo);
 
@@ -735,7 +734,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86TargetMC() {
   }
 
   // Register the asm backend.
-  TargetRegistry::RegisterMCAsmBackend(getTheX86_64Target(),
+  TargetRegistry::RegisterMCAsmBackend(*LLVMTargetRegistryTheTarget,
                                        createX86_64AsmBackend);
 }
 

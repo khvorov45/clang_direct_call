@@ -15,7 +15,6 @@
 #ifndef LLVM_SUPPORT_TARGETSELECT_H
 #define LLVM_SUPPORT_TARGETSELECT_H
 
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_include_llvm_MC_TargetRegistry.h"
 #include "llvm_include_llvm_Config_llvm-config.h"
 

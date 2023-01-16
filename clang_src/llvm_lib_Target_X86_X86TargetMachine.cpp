@@ -12,7 +12,6 @@
 
 #include "llvm_lib_Target_X86_X86TargetMachine.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86MCTargetDesc.h"
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_X86.h"
 #include "llvm_lib_Target_X86_X86CallLowering.h"
 #include "llvm_lib_Target_X86_X86LegalizerInfo.h"

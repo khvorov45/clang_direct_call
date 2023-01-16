@@ -15,7 +15,6 @@
 #include "llvm_lib_Target_X86_MCTargetDesc_X86ATTInstPrinter.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86BaseInfo.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86TargetStreamer.h"
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_X86InstrInfo.h"
 #include "llvm_lib_Target_X86_X86MachineFunctionInfo.h"
 #include "llvm_lib_Target_X86_X86Subtarget.h"
@@ -948,5 +947,5 @@ void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
 
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86AsmPrinter() {
-  RegisterAsmPrinter<X86AsmPrinter> Y(getTheX86_64Target());
+  RegisterAsmPrinter<X86AsmPrinter> Y(*LLVMTargetRegistryTheTarget);
 }

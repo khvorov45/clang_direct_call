@@ -11,7 +11,6 @@
 #include "llvm_lib_Target_X86_MCTargetDesc_X86MCExpr.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86MCTargetDesc.h"
 #include "llvm_lib_Target_X86_MCTargetDesc_X86TargetStreamer.h"
-#include "llvm_lib_Target_X86_TargetInfo_X86TargetInfo.h"
 #include "llvm_lib_Target_X86_AsmParser_X86AsmParserCommon.h"
 #include "llvm_lib_Target_X86_AsmParser_X86Operand.h"
 #include "llvm_include_llvm_ADT_STLExtras.h"
@@ -4978,7 +4977,7 @@ bool X86AsmParser::parseDirectiveSEHPushFrame(SMLoc Loc) {
 
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86AsmParser() {
-  RegisterMCAsmParser<X86AsmParser> Y(getTheX86_64Target());
+  RegisterMCAsmParser<X86AsmParser> Y(*LLVMTargetRegistryTheTarget);
 }
 
 #define GET_REGISTER_MATCHER
