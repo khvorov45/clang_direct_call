@@ -255,9 +255,11 @@ LLVMTargetMachine::createMCStreamer(
                     break;
             }
 
-            std::unique_ptr<MCAsmBackend> MAB(
-                getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions)
-            );
+            MCAsmBackend* targetMCAsmBackend = 0;
+            if (getTarget().MCAsmBackendCtorFn) {
+                targetMCAsmBackend = getTarget().MCAsmBackendCtorFn(getTarget(), STI, MRI, Options.MCOptions);
+            }
+            std::unique_ptr<MCAsmBackend> MAB(targetMCAsmBackend);
             auto              FOut = std::make_unique<formatted_raw_ostream>(Out);
             llvm::MCStreamer* S = llvm::createAsmStreamer(
                 Context,
@@ -281,10 +283,10 @@ LLVMTargetMachine::createMCStreamer(
             MCCodeEmitter* MCE = getTarget().createMCCodeEmitter(MII, Context);
             if (!MCE)
                 return make_error<StringError>("createMCCodeEmitter failed", inconvertibleErrorCode());
-            MCAsmBackend* MAB =
-                getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions);
-            if (!MAB)
-                return make_error<StringError>("createMCAsmBackend failed", inconvertibleErrorCode());
+            if (!getTarget().MCAsmBackendCtorFn) {
+                return make_error<StringError>("failed", inconvertibleErrorCode());
+            }
+            MCAsmBackend* MAB = getTarget().MCAsmBackendCtorFn(getTarget(), STI, MRI, Options.MCOptions);
 
             Triple T(getTargetTriple().str());
             AsmStreamer.reset(LLVMTargetCreateMCObjectStreamer(
@@ -367,11 +369,12 @@ LLVMTargetMachine::addPassesToEmitMC(PassManagerBase& PM, MCContext*& Ctx, raw_p
     // emission fails.
     const MCSubtargetInfo& STI = *getMCSubtargetInfo();
     const MCRegisterInfo&  MRI = *getMCRegisterInfo();
-    MCCodeEmitter*         MCE = getTarget().createMCCodeEmitter(*getMCInstrInfo(), *Ctx);
-    MCAsmBackend*          MAB =
-        getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions);
-    if (!MCE || !MAB)
+    const llvm::Target* TheTarget = &getTarget();
+    if (TheTarget->MCAsmBackendCtorFn == 0 || TheTarget->MCCodeEmitterCtorFn == 0) {
         return true;
+    }
+    MCCodeEmitter* MCE = TheTarget->MCCodeEmitterCtorFn(*getMCInstrInfo(), *Ctx);
+    MCAsmBackend*  MAB = TheTarget->MCAsmBackendCtorFn(*TheTarget, STI, MRI, Options.MCOptions);
 
     const Triple&               T = getTargetTriple();
     std::unique_ptr<MCStreamer> AsmStreamer(LLVMTargetCreateMCObjectStreamer(

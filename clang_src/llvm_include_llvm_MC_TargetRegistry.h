@@ -126,13 +126,6 @@ struct Target {
 
     Target() = default;
 
-    MCAsmBackend*
-    createMCAsmBackend(const MCSubtargetInfo& STI, const MCRegisterInfo& MRI, const MCTargetOptions& Options) const {
-        if (!MCAsmBackendCtorFn)
-            return nullptr;
-        return MCAsmBackendCtorFn(*this, STI, MRI, Options);
-    }
-
     MCTargetAsmParser*
     createMCAsmParser(const MCSubtargetInfo& STI, MCAsmParser& Parser, const MCInstrInfo& MII, const MCTargetOptions& Options) const {
         if (!MCAsmParserCtorFn)
