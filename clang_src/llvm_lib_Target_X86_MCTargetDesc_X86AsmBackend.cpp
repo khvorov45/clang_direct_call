@@ -138,7 +138,7 @@ class X86AsmBackend : public MCAsmBackend {
 public:
   X86AsmBackend(const Target &T, const MCSubtargetInfo &STI)
       : MCAsmBackend(support::little), STI(STI),
-        MCII(T.createMCInstrInfo()) {
+        MCII(T.MCInstrInfoCtorFn ? T.MCInstrInfoCtorFn() : 0) {
     if (X86AlignBranchWithin32BBoundaries) {
       // At the moment, this defaults to aligning fused branches, unconditional
       // jumps, and (unfused) conditional jumps with nops.  Both the

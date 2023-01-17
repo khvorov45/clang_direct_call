@@ -126,13 +126,6 @@ struct Target {
 
     Target() = default;
 
-    MCInstrInfo*
-    createMCInstrInfo() const {
-        if (!MCInstrInfoCtorFn)
-            return nullptr;
-        return MCInstrInfoCtorFn();
-    }
-
     MCInstrAnalysis*
     createMCInstrAnalysis(const MCInstrInfo* Info) const {
         if (!MCInstrAnalysisCtorFn)

@@ -94,9 +94,10 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     if (!STI)
         return;
 
-    std::unique_ptr<MCInstrInfo> MCII(T->createMCInstrInfo());
-    if (!MCII)
+    if (T->MCInstrInfoCtorFn == 0) {
         return;
+    }
+    std::unique_ptr<MCInstrInfo> MCII(T->MCInstrInfoCtorFn());
 
     std::unique_ptr<MemoryBuffer> Buffer(MemoryBuffer::getMemBuffer(InlineAsm));
     SourceMgr                     SrcMgr;

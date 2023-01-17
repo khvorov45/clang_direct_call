@@ -60,9 +60,10 @@ LLVMCreateDisasmCPUFeatures(const char* TT, const char* CPU, const char* Feature
     }
     std::unique_ptr<const MCAsmInfo> MAI(TheTarget->MCAsmInfoCtorFn(*MRI, llvm::Triple(TT), MCOptions));
 
-    std::unique_ptr<const MCInstrInfo> MII(TheTarget->createMCInstrInfo());
-    if (!MII)
-        return nullptr;
+    if (TheTarget->MCInstrInfoCtorFn == 0) {
+        return 0;
+    }
+    std::unique_ptr<const MCInstrInfo> MII(TheTarget->MCInstrInfoCtorFn());
 
     std::unique_ptr<const MCSubtargetInfo> STI(
         TheTarget->createMCSubtargetInfo(TT, CPU, Features)

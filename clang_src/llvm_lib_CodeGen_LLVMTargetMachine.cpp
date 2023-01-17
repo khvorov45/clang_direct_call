@@ -40,8 +40,8 @@ void
 LLVMTargetMachine::initAsmInfo() {
     MRI.reset(TheTarget.createMCRegInfo(getTargetTriple().str()));
     assert(MRI && "Unable to create reg info");
-    MII.reset(TheTarget.createMCInstrInfo());
-    assert(MII && "Unable to create instruction info");
+    assert(TheTarget.MCInstrInfoCtorFn);
+    MII.reset(TheTarget.MCInstrInfoCtorFn());
     // FIXME: Having an MCSubtargetInfo on the target machine is a hack due
     // to some backends having subtarget feature dependent module level
     // code generation. This is similar to the hack in the AsmPrinter for
