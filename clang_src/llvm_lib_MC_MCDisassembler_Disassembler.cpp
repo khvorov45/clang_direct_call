@@ -49,9 +49,10 @@ LLVMCreateDisasmCPUFeatures(const char* TT, const char* CPU, const char* Feature
     if (!TheTarget)
         return nullptr;
 
-    std::unique_ptr<const MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TT));
-    if (!MRI)
-        return nullptr;
+    if (TheTarget->MCRegInfoCtorFn == 0) {
+        return 0;
+    }
+    std::unique_ptr<const MCRegisterInfo> MRI(TheTarget->MCRegInfoCtorFn(llvm::Triple(TT)));
 
     MCTargetOptions MCOptions;
     // Get the assembler info needed to setup the MCContext.
@@ -65,11 +66,10 @@ LLVMCreateDisasmCPUFeatures(const char* TT, const char* CPU, const char* Feature
     }
     std::unique_ptr<const MCInstrInfo> MII(TheTarget->MCInstrInfoCtorFn());
 
-    std::unique_ptr<const MCSubtargetInfo> STI(
-        TheTarget->createMCSubtargetInfo(TT, CPU, Features)
-    );
-    if (!STI)
-        return nullptr;
+    if (TheTarget->MCSubtargetInfoCtorFn == 0) {
+        return 0;
+    }
+    std::unique_ptr<const MCSubtargetInfo> STI(TheTarget->MCSubtargetInfoCtorFn(llvm::Triple(TT), CPU, Features));
 
     // Set up the MCContext for creating symbols and MCExpr's.
     std::unique_ptr<MCContext> Ctx(

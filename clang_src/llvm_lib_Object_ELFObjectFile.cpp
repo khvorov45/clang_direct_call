@@ -645,9 +645,10 @@ ELFObjectFileBase::getPltAddresses() const {
     return {};
   }
   std::unique_ptr<const MCInstrInfo> MII(T->MCInstrInfoCtorFn());
-  std::unique_ptr<const MCInstrAnalysis> MIA(T->createMCInstrAnalysis(MII.get()));
-  if (!MIA)
+  if (T->MCInstrAnalysisCtorFn == 0) {
     return {};
+  }
+  std::unique_ptr<const MCInstrAnalysis> MIA(T->MCInstrAnalysisCtorFn(MII.get()));
   std::optional<SectionRef> Plt, RelaPlt, GotPlt;
   for (const SectionRef &Section : sections()) {
     Expected<StringRef> NameOrErr = Section.getName();

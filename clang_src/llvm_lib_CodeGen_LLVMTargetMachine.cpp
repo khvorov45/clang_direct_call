@@ -38,20 +38,16 @@ static cl::opt<bool>
 
 void
 LLVMTargetMachine::initAsmInfo() {
-    MRI.reset(TheTarget.createMCRegInfo(getTargetTriple().str()));
-    assert(MRI && "Unable to create reg info");
+    assert(TheTarget.MCRegInfoCtorFn);
+    MRI.reset(TheTarget.MCRegInfoCtorFn(getTargetTriple()));
     assert(TheTarget.MCInstrInfoCtorFn);
     MII.reset(TheTarget.MCInstrInfoCtorFn());
     // FIXME: Having an MCSubtargetInfo on the target machine is a hack due
     // to some backends having subtarget feature dependent module level
     // code generation. This is similar to the hack in the AsmPrinter for
     // module level assembly etc.
-    STI.reset(TheTarget.createMCSubtargetInfo(
-        getTargetTriple().str(),
-        getTargetCPU(),
-        getTargetFeatureString()
-    ));
-    assert(STI && "Unable to create subtarget info");
+    assert(TheTarget.MCSubtargetInfoCtorFn);
+    STI.reset(TheTarget.MCSubtargetInfoCtorFn(getTargetTriple(), getTargetCPU(), getTargetFeatureString()));
 
     assert(TheTarget.MCAsmInfoCtorFn);
     MCAsmInfo* TmpAsmInfo = TheTarget.MCAsmInfoCtorFn(*MRI, getTargetTriple(), Options.MCOptions);

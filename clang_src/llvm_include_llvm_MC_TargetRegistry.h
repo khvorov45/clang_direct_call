@@ -126,27 +126,6 @@ struct Target {
 
     Target() = default;
 
-    MCInstrAnalysis*
-    createMCInstrAnalysis(const MCInstrInfo* Info) const {
-        if (!MCInstrAnalysisCtorFn)
-            return nullptr;
-        return MCInstrAnalysisCtorFn(Info);
-    }
-
-    MCRegisterInfo*
-    createMCRegInfo(StringRef TT) const {
-        if (!MCRegInfoCtorFn)
-            return nullptr;
-        return MCRegInfoCtorFn(Triple(TT));
-    }
-
-    MCSubtargetInfo*
-    createMCSubtargetInfo(StringRef TheTriple, StringRef CPU, StringRef Features) const {
-        if (!MCSubtargetInfoCtorFn)
-            return nullptr;
-        return MCSubtargetInfoCtorFn(Triple(TheTriple), CPU, Features);
-    }
-
     TargetMachine*
     createTargetMachine(
         StringRef                       TT,

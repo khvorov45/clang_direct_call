@@ -78,9 +78,10 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     const Target* T = LLVMTargetRegistryTheTarget;
     assert(T && T->MCAsmParserCtorFn);
 
-    std::unique_ptr<MCRegisterInfo> MRI(T->createMCRegInfo(TT.str()));
-    if (!MRI)
+    if (T->MCRegInfoCtorFn == 0) {
         return;
+    }
+    std::unique_ptr<MCRegisterInfo> MRI(T->MCRegInfoCtorFn(TT));
 
     MCTargetOptions MCOptions;
     if (!T->MCAsmInfoCtorFn) {
@@ -88,11 +89,10 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     }
     std::unique_ptr<MCAsmInfo> MAI(T->MCAsmInfoCtorFn(*MRI, TT, MCOptions));
 
-    std::unique_ptr<MCSubtargetInfo> STI(
-        T->createMCSubtargetInfo(TT.str(), "", "")
-    );
-    if (!STI)
+    if (T->MCSubtargetInfoCtorFn == 0) {
         return;
+    }
+    std::unique_ptr<MCSubtargetInfo> STI(T->MCSubtargetInfoCtorFn(TT, "", ""));
 
     if (T->MCInstrInfoCtorFn == 0) {
         return;

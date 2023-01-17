@@ -563,12 +563,10 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     std::string          FeaturesStr =
         llvm::join(TO.Features.begin(), TO.Features.end(), ",");
 
-    std::unique_ptr<llvm::MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TT));
-    if (!MRI) {
-        Diag(AsmLoc, diag::err_msasm_unable_to_create_target)
-            << "target MC unavailable";
-        return EmptyStmt();
+    if (TheTarget->MCRegInfoCtorFn == 0) {
+        return EmptyStmt(); 
     }
+    std::unique_ptr<llvm::MCRegisterInfo> MRI(TheTarget->MCRegInfoCtorFn(llvm::Triple(TT)));
 
     // FIXME: init MCOptions from sanitizer flags here.
 
