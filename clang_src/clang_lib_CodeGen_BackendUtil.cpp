@@ -572,7 +572,12 @@ EmitAssemblyHelper::CreateTargetMachine(bool MustCreateTM) {
     llvm::TargetOptions Options;
     if (!initTargetOptions(Diags, Options, CodeGenOpts, TargetOpts, LangOpts, HSOpts))
         return;
-    TM.reset(TheTarget->createTargetMachine(Triple, TargetOpts.CPU, FeaturesStr, Options, RM, CM, OptLevel));
+    
+    TargetMachine* targetMachine = 0;
+    if (TheTarget->TargetMachineCtorFn) {
+        targetMachine = TheTarget->TargetMachineCtorFn(*TheTarget, llvm::Triple(Triple), TargetOpts.CPU, FeaturesStr, Options, RM, CM, OptLevel, false);
+    }
+    TM.reset(targetMachine);
 }
 
 bool

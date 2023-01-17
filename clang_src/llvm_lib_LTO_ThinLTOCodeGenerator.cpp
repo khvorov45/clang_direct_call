@@ -625,10 +625,8 @@ TargetMachineBuilder::create() const {
     Features.getDefaultSubtargetFeatures(TheTriple);
     std::string FeatureStr = Features.getString();
 
-    std::unique_ptr<TargetMachine> TM(
-        TheTarget->createTargetMachine(TheTriple.str(), MCpu, FeatureStr, Options, RelocModel, std::nullopt, CGOptLevel)
-    );
-    assert(TM && "Cannot create target machine");
+    assert(TheTarget->TargetMachineCtorFn);
+    std::unique_ptr<TargetMachine> TM(TheTarget->TargetMachineCtorFn(*TheTarget, TheTriple, MCpu, FeatureStr, Options, RelocModel, std::nullopt, CGOptLevel, false));
 
     return TM;
 }

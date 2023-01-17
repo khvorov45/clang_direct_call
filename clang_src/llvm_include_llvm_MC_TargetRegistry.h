@@ -126,22 +126,6 @@ struct Target {
 
     Target() = default;
 
-    TargetMachine*
-    createTargetMachine(
-        StringRef                       TT,
-        StringRef                       CPU,
-        StringRef                       Features,
-        const TargetOptions&            Options,
-        std::optional<Reloc::Model>     RM,
-        std::optional<CodeModel::Model> CM = std::nullopt,
-        CodeGenOpt::Level               OL = CodeGenOpt::Default,
-        bool                            JIT = false
-    ) const {
-        if (!TargetMachineCtorFn)
-            return nullptr;
-        return TargetMachineCtorFn(*this, Triple(TT), CPU, Features, Options, RM, CM, OL, JIT);
-    }
-
     MCAsmBackend*
     createMCAsmBackend(const MCSubtargetInfo& STI, const MCRegisterInfo& MRI, const MCTargetOptions& Options) const {
         if (!MCAsmBackendCtorFn)

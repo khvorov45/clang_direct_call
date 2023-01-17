@@ -3279,15 +3279,11 @@ createTargetMachine(Function* F, CodeGenOpt::Level OptLevel) {
         return {};
 
     llvm::TargetOptions Options;
-    return std::unique_ptr<TargetMachine>(TheTarget->createTargetMachine(
-        Triple,
-        CPU,
-        Features,
-        Options,
-        /*RelocModel=*/std::nullopt,
-        /*CodeModel=*/std::nullopt,
-        OptLevel
-    ));
+    TargetMachine*      targetMachine = 0;
+    if (TheTarget->TargetMachineCtorFn) {
+        targetMachine = TheTarget->TargetMachineCtorFn(*TheTarget, llvm::Triple(Triple), CPU, Features, Options, std::nullopt, std::nullopt, OptLevel, false);
+    }
+    return std::unique_ptr<TargetMachine>(targetMachine);
 }
 
 /// Heuristically determine the best-performant unroll factor for \p CLI. This

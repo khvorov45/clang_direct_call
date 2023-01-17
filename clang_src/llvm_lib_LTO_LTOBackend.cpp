@@ -219,16 +219,8 @@ createTargetMachine(const Config& Conf, const Target* TheTarget, Module& M) {
     else
         CodeModel = M.getCodeModel();
 
-    std::unique_ptr<TargetMachine> TM(TheTarget->createTargetMachine(
-        TheTriple,
-        Conf.CPU,
-        Features.getString(),
-        Conf.Options,
-        RelocModel,
-        CodeModel,
-        Conf.CGOptLevel
-    ));
-    assert(TM && "Failed to create target machine");
+    assert(TheTarget->TargetMachineCtorFn);
+    std::unique_ptr<TargetMachine> TM(TheTarget->TargetMachineCtorFn(*TheTarget, llvm::Triple(TheTriple), Conf.CPU, Features.getString(), Conf.Options, RelocModel, CodeModel, Conf.CGOptLevel, false));
     return TM;
 }
 
@@ -439,10 +431,7 @@ splitCodeGen(const Config& C, TargetMachine* TM, AddStreamFn AddStream, unsigned
                     if (!MOrErr)
                         report_fatal_error("Failed to read bitcode");
                     std::unique_ptr<Module> MPartInCtx = std::move(MOrErr.get());
-
-                    std::unique_ptr<TargetMachine> TM =
-                        createTargetMachine(C, T, *MPartInCtx);
-
+                    std::unique_ptr<TargetMachine> TM = createTargetMachine(C, T, *MPartInCtx);
                     codegen(C, TM.get(), AddStream, ThreadId, *MPartInCtx, CombinedIndex);
                 },
                 // Pass BC using std::move to ensure that it get moved rather than
