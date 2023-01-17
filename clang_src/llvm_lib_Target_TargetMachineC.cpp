@@ -57,60 +57,6 @@ LLVMBool LLVMGetTargetFromTriple(const char* TripleStr, LLVMTargetRef *T,
   return 0;
 }
 
-LLVMTargetMachineRef LLVMCreateTargetMachine(LLVMTargetRef T,
-        const char *Triple, const char *CPU, const char *Features,
-        LLVMCodeGenOptLevel Level, LLVMRelocMode Reloc,
-        LLVMCodeModel CodeModel) {
-  std::optional<Reloc::Model> RM;
-  switch (Reloc){
-    case LLVMRelocStatic:
-      RM = Reloc::Static;
-      break;
-    case LLVMRelocPIC:
-      RM = Reloc::PIC_;
-      break;
-    case LLVMRelocDynamicNoPic:
-      RM = Reloc::DynamicNoPIC;
-      break;
-    case LLVMRelocROPI:
-      RM = Reloc::ROPI;
-      break;
-    case LLVMRelocRWPI:
-      RM = Reloc::RWPI;
-      break;
-    case LLVMRelocROPI_RWPI:
-      RM = Reloc::ROPI_RWPI;
-      break;
-    default:
-      break;
-  }
-
-  bool JIT;
-  std::optional<CodeModel::Model> CM = unwrap(CodeModel, JIT);
-
-  CodeGenOpt::Level OL;
-  switch (Level) {
-    case LLVMCodeGenLevelNone:
-      OL = CodeGenOpt::None;
-      break;
-    case LLVMCodeGenLevelLess:
-      OL = CodeGenOpt::Less;
-      break;
-    case LLVMCodeGenLevelAggressive:
-      OL = CodeGenOpt::Aggressive;
-      break;
-    default:
-      OL = CodeGenOpt::Default;
-      break;
-  }
-
-  TargetOptions opt;
-  return wrap(unwrap(T)->createTargetMachine(Triple, CPU, Features, opt, RM, CM,
-                                             OL, JIT));
-}
-
-void LLVMDisposeTargetMachine(LLVMTargetMachineRef T) { delete unwrap(T); }
-
 LLVMTargetRef LLVMGetTargetMachineTarget(LLVMTargetMachineRef T) {
   const Target* target = &(unwrap(T)->getTarget());
   return wrap(target);
