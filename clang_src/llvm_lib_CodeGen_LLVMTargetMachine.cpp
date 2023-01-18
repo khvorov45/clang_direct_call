@@ -124,10 +124,10 @@ LLVMTargetMachine::addAsmPrinter(PassManagerBase& PM, raw_pwrite_stream& Out, ra
         return true;
 
     // Create the AsmPrinter, which takes ownership of AsmStreamer if successful.
-    FunctionPass* Printer =
-        getTarget().createAsmPrinter(*this, std::move(*MCStreamerOrErr));
-    if (!Printer)
+    if (getTarget().AsmPrinterCtorFn == 0) {
         return true;
+    }
+    FunctionPass* Printer = getTarget().AsmPrinterCtorFn(*this, std::move(*MCStreamerOrErr));
 
     PM.add(Printer);
     return false;
@@ -229,18 +229,20 @@ LLVMTargetMachine::createMCStreamer(
 
     switch (FileType) {
         case CGFT_AssemblyFile: {
-            MCInstPrinter* InstPrinter = getTarget().createMCInstPrinter(
-                getTargetTriple(),
-                MAI.getAssemblerDialect(),
-                MAI,
-                MII,
-                MRI
-            );
+            MCInstPrinter* InstPrinter = 0;
+            if (getTarget().MCInstPrinterCtorFn) {
+                InstPrinter = getTarget().MCInstPrinterCtorFn(getTargetTriple(), MAI.getAssemblerDialect(), MAI, MII, MRI);
+            }
 
             // Create a code emitter if asked to show the encoding.
             std::unique_ptr<MCCodeEmitter> MCE;
-            if (Options.MCOptions.ShowMCEncoding)
-                MCE.reset(getTarget().createMCCodeEmitter(MII, Context));
+            if (Options.MCOptions.ShowMCEncoding) {
+                MCCodeEmitter* emitter = 0;
+                if (getTarget().MCCodeEmitterCtorFn) {
+                    emitter = getTarget().MCCodeEmitterCtorFn(MII, Context);
+                }
+                MCE.reset(emitter);
+            }
 
             bool UseDwarfDirectory = false;
             switch (Options.MCOptions.MCUseDwarfDirectory) {
@@ -260,8 +262,8 @@ LLVMTargetMachine::createMCStreamer(
                 targetMCAsmBackend = getTarget().MCAsmBackendCtorFn(getTarget(), STI, MRI, Options.MCOptions);
             }
             std::unique_ptr<MCAsmBackend> MAB(targetMCAsmBackend);
-            auto              FOut = std::make_unique<formatted_raw_ostream>(Out);
-            llvm::MCStreamer* S = llvm::createAsmStreamer(
+            auto                          FOut = std::make_unique<formatted_raw_ostream>(Out);
+            llvm::MCStreamer*             S = llvm::createAsmStreamer(
                 Context,
                 std::move(FOut),
                 Options.MCOptions.AsmVerbose,
@@ -280,12 +282,10 @@ LLVMTargetMachine::createMCStreamer(
         case CGFT_ObjectFile: {
             // Create the code emitter for the target if it exists.  If not, .o file
             // emission fails.
-            MCCodeEmitter* MCE = getTarget().createMCCodeEmitter(MII, Context);
-            if (!MCE)
-                return make_error<StringError>("createMCCodeEmitter failed", inconvertibleErrorCode());
-            if (!getTarget().MCAsmBackendCtorFn) {
+            if (!getTarget().MCAsmBackendCtorFn || !getTarget().MCCodeEmitterCtorFn) {
                 return make_error<StringError>("failed", inconvertibleErrorCode());
             }
+            MCCodeEmitter* MCE = getTarget().MCCodeEmitterCtorFn(MII, Context);
             MCAsmBackend* MAB = getTarget().MCAsmBackendCtorFn(getTarget(), STI, MRI, Options.MCOptions);
 
             Triple T(getTargetTriple().str());
@@ -306,7 +306,11 @@ LLVMTargetMachine::createMCStreamer(
         case CGFT_Null:
             // The Null output is intended for use for performance analysis and testing,
             // not real users.
-            AsmStreamer.reset(getTarget().createNullStreamer(Context));
+            MCStreamer* streamer = llvm::createNullStreamer(Context);
+            if (getTarget().NullTargetStreamerCtorFn) {
+                getTarget().NullTargetStreamerCtorFn(*streamer);
+            }
+            AsmStreamer.reset(streamer);
             break;
     }
 
@@ -369,7 +373,7 @@ LLVMTargetMachine::addPassesToEmitMC(PassManagerBase& PM, MCContext*& Ctx, raw_p
     // emission fails.
     const MCSubtargetInfo& STI = *getMCSubtargetInfo();
     const MCRegisterInfo&  MRI = *getMCRegisterInfo();
-    const llvm::Target* TheTarget = &getTarget();
+    const llvm::Target*    TheTarget = &getTarget();
     if (TheTarget->MCAsmBackendCtorFn == 0 || TheTarget->MCCodeEmitterCtorFn == 0) {
         return true;
     }
@@ -391,10 +395,10 @@ LLVMTargetMachine::addPassesToEmitMC(PassManagerBase& PM, MCContext*& Ctx, raw_p
     ));
 
     // Create the AsmPrinter, which takes ownership of AsmStreamer if successful.
-    FunctionPass* Printer =
-        getTarget().createAsmPrinter(*this, std::move(AsmStreamer));
-    if (!Printer)
+    if (getTarget().AsmPrinterCtorFn == 0) {
         return true;
+    }
+    FunctionPass* Printer = getTarget().AsmPrinterCtorFn(*this, std::move(AsmStreamer));
 
     PM.add(Printer);
     PM.add(createFreeMachineFunctionPass());

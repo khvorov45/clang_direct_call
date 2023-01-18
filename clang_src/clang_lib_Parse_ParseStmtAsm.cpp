@@ -564,13 +564,13 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
         llvm::join(TO.Features.begin(), TO.Features.end(), ",");
 
     if (TheTarget->MCRegInfoCtorFn == 0) {
-        return EmptyStmt(); 
+        return EmptyStmt();
     }
     std::unique_ptr<llvm::MCRegisterInfo> MRI(TheTarget->MCRegInfoCtorFn(llvm::Triple(TT)));
 
     // FIXME: init MCOptions from sanitizer flags here.
 
-    if (!TheTarget->MCAsmInfoCtorFn || !TheTarget->MCInstrInfoCtorFn || !TheTarget->MCSubtargetInfoCtorFn) {
+    if (!TheTarget->MCAsmInfoCtorFn || !TheTarget->MCInstrInfoCtorFn || !TheTarget->MCSubtargetInfoCtorFn || !TheTarget->MCAsmParserCtorFn || !TheTarget->MCInstPrinterCtorFn) {
         Diag(AsmLoc, diag::err_msasm_unable_to_create_target) << "target MC unavailable";
         return EmptyStmt();
     }
@@ -592,17 +592,10 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     // Tell SrcMgr about this buffer, which is what the parser will pick up.
     TempSrcMgr.AddNewSourceBuffer(std::move(Buffer), llvm::SMLoc());
 
-    std::unique_ptr<llvm::MCStreamer>  Str(createNullStreamer(Ctx));
-    std::unique_ptr<llvm::MCAsmParser> Parser(createMCAsmParser(TempSrcMgr, Ctx, *Str.get(), *MAI));
-
-    if (TheTarget->MCAsmParserCtorFn == 0) {
-        return EmptyStmt();
-    }
+    std::unique_ptr<llvm::MCStreamer>        Str(createNullStreamer(Ctx));
+    std::unique_ptr<llvm::MCAsmParser>       Parser(createMCAsmParser(TempSrcMgr, Ctx, *Str.get(), *MAI));
     std::unique_ptr<llvm::MCTargetAsmParser> TargetParser(TheTarget->MCAsmParserCtorFn(*STI, *Parser, *MII, MCOptions));
-
-    std::unique_ptr<llvm::MCInstPrinter> IP(
-        TheTarget->createMCInstPrinter(llvm::Triple(TT), 1, *MAI, *MII, *MRI)
-    );
+    std::unique_ptr<llvm::MCInstPrinter>     IP(TheTarget->MCInstPrinterCtorFn(llvm::Triple(TT), 1, *MAI, *MII, *MRI));
 
     // Change to the Intel dialect.
     Parser->setAssemblerDialect(1);

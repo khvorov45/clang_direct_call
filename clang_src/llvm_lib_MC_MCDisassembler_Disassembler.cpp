@@ -79,39 +79,36 @@ LLVMCreateDisasmCPUFeatures(const char* TT, const char* CPU, const char* Feature
         return nullptr;
 
     // Set up disassembler.
-    std::unique_ptr<MCDisassembler> DisAsm(
-        TheTarget->createMCDisassembler(*STI, *Ctx)
-    );
-    if (!DisAsm)
+    if (TheTarget->MCDisassemblerCtorFn == 0) {
         return nullptr;
+    }
+    std::unique_ptr<MCDisassembler> DisAsm(TheTarget->MCDisassemblerCtorFn(*TheTarget, *STI, *Ctx));
 
-    std::unique_ptr<MCRelocationInfo> RelInfo(
-        TheTarget->createMCRelocationInfo(TT, *Ctx)
-    );
-    if (!RelInfo)
-        return nullptr;
+    MCRelocationInfo* RelInfoPtr = 0;
+    if (TheTarget->MCRelocationInfoCtorFn) {
+        RelInfoPtr = TheTarget->MCRelocationInfoCtorFn(llvm::Triple(TT), *Ctx);
+    } else {
+        RelInfoPtr = llvm::createMCRelocationInfo(llvm::Triple(TT), *Ctx);
+    }
+    std::unique_ptr<MCRelocationInfo> RelInfo(RelInfoPtr);
 
-    std::unique_ptr<MCSymbolizer> Symbolizer(TheTarget->createMCSymbolizer(
-        TT,
-        GetOpInfo,
-        SymbolLookUp,
-        DisInfo,
-        Ctx.get(),
-        std::move(RelInfo)
-    ));
+    MCSymbolizer* SymbolizerPtr = 0;
+    if (TheTarget->MCSymbolizerCtorFn) {
+        SymbolizerPtr = TheTarget->MCSymbolizerCtorFn(llvm::Triple(TT), GetOpInfo, SymbolLookUp, DisInfo, Ctx.get(), std::move(RelInfo));
+    } else {
+        SymbolizerPtr = llvm::createMCSymbolizer(llvm::Triple(TT), GetOpInfo, SymbolLookUp, DisInfo, Ctx.get(), std::move(RelInfo));
+    }
+
+    std::unique_ptr<MCSymbolizer> Symbolizer(SymbolizerPtr);
     DisAsm->setSymbolizer(std::move(Symbolizer));
 
     // Set up the instruction printer.
-    int                            AsmPrinterVariant = MAI->getAssemblerDialect();
-    std::unique_ptr<MCInstPrinter> IP(TheTarget->createMCInstPrinter(
-        Triple(TT),
-        AsmPrinterVariant,
-        *MAI,
-        *MII,
-        *MRI
-    ));
-    if (!IP)
+    int AsmPrinterVariant = MAI->getAssemblerDialect();
+
+    if (!TheTarget->MCInstPrinterCtorFn) {
         return nullptr;
+    }
+    std::unique_ptr<MCInstPrinter> IP(TheTarget->MCInstPrinterCtorFn(Triple(TT), AsmPrinterVariant, *MAI, *MII, *MRI));
 
     LLVMDisasmContext* DC = new LLVMDisasmContext(
         TT,
@@ -344,14 +341,8 @@ LLVMSetDisasmOptions(LLVMDisasmContextRef DCR, uint64_t Options) {
         const MCRegisterInfo* MRI = DC->getRegisterInfo();
         int                   AsmPrinterVariant = MAI->getAssemblerDialect();
         AsmPrinterVariant = AsmPrinterVariant == 0 ? 1 : 0;
-        MCInstPrinter* IP = DC->getTarget()->createMCInstPrinter(
-            Triple(DC->getTripleName()),
-            AsmPrinterVariant,
-            *MAI,
-            *MII,
-            *MRI
-        );
-        if (IP) {
+        if (DC->getTarget()->MCInstPrinterCtorFn) {
+            MCInstPrinter* IP = DC->getTarget()->MCInstPrinterCtorFn(Triple(DC->getTripleName()), AsmPrinterVariant, *MAI, *MII, *MRI);
             DC->setIP(IP);
             DC->addOptions(LLVMDisassembler_Option_AsmPrinterVariant);
             Options &= ~LLVMDisassembler_Option_AsmPrinterVariant;

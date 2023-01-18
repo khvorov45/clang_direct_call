@@ -12,19 +12,19 @@
 
 using namespace llvm;
 
-MCRelocationInfo::MCRelocationInfo(MCContext &Ctx) : Ctx(Ctx) {}
+MCRelocationInfo::MCRelocationInfo(MCContext& Ctx) :
+    Ctx(Ctx) {}
 
 MCRelocationInfo::~MCRelocationInfo() = default;
 
-const MCExpr *
-MCRelocationInfo::createExprForCAPIVariantKind(const MCExpr *SubExpr,
-                                               unsigned VariantKind) {
-  if (VariantKind != LLVMDisassembler_VariantKind_None)
-    return nullptr;
-  return SubExpr;
+const MCExpr*
+MCRelocationInfo::createExprForCAPIVariantKind(const MCExpr* SubExpr, unsigned VariantKind) {
+    if (VariantKind != LLVMDisassembler_VariantKind_None)
+        return nullptr;
+    return SubExpr;
 }
 
-MCRelocationInfo *llvm::createMCRelocationInfo(const Triple &TT,
-                                               MCContext &Ctx) {
-  return new MCRelocationInfo(Ctx);
+MCRelocationInfo*
+llvm::createMCRelocationInfo(const Triple& TT, MCContext& Ctx) {
+    return new MCRelocationInfo(Ctx);
 }

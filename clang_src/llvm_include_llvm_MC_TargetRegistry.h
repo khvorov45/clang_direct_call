@@ -126,62 +126,6 @@ struct Target {
 
     Target() = default;
 
-    AsmPrinter*
-    createAsmPrinter(TargetMachine& TM, std::unique_ptr<MCStreamer>&& Streamer) const {
-        if (!AsmPrinterCtorFn)
-            return nullptr;
-        return AsmPrinterCtorFn(TM, std::move(Streamer));
-    }
-
-    MCDisassembler*
-    createMCDisassembler(const MCSubtargetInfo& STI, MCContext& Ctx) const {
-        if (!MCDisassemblerCtorFn)
-            return nullptr;
-        return MCDisassemblerCtorFn(*this, STI, Ctx);
-    }
-
-    MCInstPrinter*
-    createMCInstPrinter(const Triple& T, unsigned SyntaxVariant, const MCAsmInfo& MAI, const MCInstrInfo& MII, const MCRegisterInfo& MRI) const {
-        if (!MCInstPrinterCtorFn)
-            return nullptr;
-        return MCInstPrinterCtorFn(T, SyntaxVariant, MAI, MII, MRI);
-    }
-
-    MCCodeEmitter*
-    createMCCodeEmitter(const MCInstrInfo& II, MCContext& Ctx) const {
-        if (!MCCodeEmitterCtorFn)
-            return nullptr;
-        return MCCodeEmitterCtorFn(II, Ctx);
-    }
-
-    MCStreamer*
-    createNullStreamer(MCContext& Ctx) const {
-        MCStreamer* S = llvm::createNullStreamer(Ctx);
-        createNullTargetStreamer(*S);
-        return S;
-    }
-
-    MCTargetStreamer*
-    createNullTargetStreamer(MCStreamer& S) const {
-        if (NullTargetStreamerCtorFn)
-            return NullTargetStreamerCtorFn(S);
-        return nullptr;
-    }
-
-    MCRelocationInfo*
-    createMCRelocationInfo(StringRef TT, MCContext& Ctx) const {
-        MCRelocationInfoCtorTy Fn = MCRelocationInfoCtorFn
-            ? MCRelocationInfoCtorFn
-            : llvm::createMCRelocationInfo;
-        return Fn(Triple(TT), Ctx);
-    }
-
-    MCSymbolizer*
-    createMCSymbolizer(StringRef TT, LLVMOpInfoCallback GetOpInfo, LLVMSymbolLookupCallback SymbolLookUp, void* DisInfo, MCContext* Ctx, std::unique_ptr<MCRelocationInfo>&& RelInfo) const {
-        MCSymbolizerCtorTy Fn =
-            MCSymbolizerCtorFn ? MCSymbolizerCtorFn : llvm::createMCSymbolizer;
-        return Fn(Triple(TT), GetOpInfo, SymbolLookUp, DisInfo, Ctx, std::move(RelInfo));
-    }
 };
 
 }  // end namespace llvm

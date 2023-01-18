@@ -108,7 +108,10 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     MOFI->setSDKVersion(M.getSDKVersion());
     MCCtx.setObjectFileInfo(MOFI.get());
     RecordStreamer Streamer(MCCtx, M);
-    T->createNullTargetStreamer(Streamer);
+
+    if (T->NullTargetStreamerCtorFn) {
+        T->NullTargetStreamerCtorFn(Streamer);
+    }
 
     std::unique_ptr<MCAsmParser> Parser(createMCAsmParser(SrcMgr, MCCtx, Streamer, *MAI));
 
