@@ -614,7 +614,7 @@ ThinLTOCodeGenerator::crossReferenceSymbol(StringRef Name) {
 std::unique_ptr<TargetMachine>
 TargetMachineBuilder::create() const {
     std::string   ErrMsg;
-    const Target* TheTarget =
+    const LLVMTarget* TheTarget =
         LLVMTargetRegistryTheTarget;
     if (!TheTarget) {
         report_fatal_error(Twine("Can't load target for this Triple: ") + ErrMsg);

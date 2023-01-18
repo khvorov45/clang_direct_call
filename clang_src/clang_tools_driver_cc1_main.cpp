@@ -63,16 +63,16 @@ mdc_streq(mdc_Str str1, mdc_Str str2) {
 }
 
 static llvm::TargetMachine*
-LLVMX86TargetMachineProc(const llvm::Target& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) {
+LLVMX86TargetMachineProc(const LLVMTarget& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) {
     return new llvm::X86TargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, JIT);
 }
 
-llvm::Target* LLVMTargetRegistryTheTarget = 0;
+LLVMTarget* LLVMTargetRegistryTheTarget = 0;
 
 extern "C" int
 cc1_main(int argc, char** argv) {
     // NOTE(khvorov) Init
-    llvm::Target x8664Target;
+    LLVMTarget x8664Target = {};
     {
         x8664Target.Name = "x86-64";
         x8664Target.ShortDesc = "64-bit X86: EM64T and AMD64";

@@ -45,7 +45,7 @@ LLVMDisasmContextRef
 LLVMCreateDisasmCPUFeatures(const char* TT, const char* CPU, const char* Features, void* DisInfo, int TagType, LLVMOpInfoCallback GetOpInfo, LLVMSymbolLookupCallback SymbolLookUp) {
     // Get the target.
     std::string   Error;
-    const Target* TheTarget = LLVMTargetRegistryTheTarget;
+    const LLVMTarget* TheTarget = LLVMTargetRegistryTheTarget;
     if (!TheTarget)
         return nullptr;
 

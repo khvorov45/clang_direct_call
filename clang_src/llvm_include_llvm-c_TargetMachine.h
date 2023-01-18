@@ -32,7 +32,7 @@ LLVM_C_EXTERN_C_BEGIN
  */
 
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
-typedef struct LLVMTarget *LLVMTargetRef;
+typedef struct LLVMTarget_* LLVMTargetRef;
 
 typedef enum {
     LLVMCodeGenLevelNone,

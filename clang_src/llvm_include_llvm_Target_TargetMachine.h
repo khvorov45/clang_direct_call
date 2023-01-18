@@ -27,6 +27,8 @@
 #include <string>
 #include <utility>
 
+struct LLVMTarget;
+
 namespace llvm {
 
 class AAManager;
@@ -50,7 +52,6 @@ class PassBuilder;
 struct PerFunctionMIParsingState;
 class SMDiagnostic;
 class SMRange;
-class Target;
 class TargetIntrinsicInfo;
 class TargetIRAnalysis;
 class TargetTransformInfo;
@@ -77,12 +78,12 @@ struct MachineFunctionInfo;
 ///
 class TargetMachine {
 protected: // Can only create subclasses.
-  TargetMachine(const Target &T, StringRef DataLayoutString,
+  TargetMachine(const LLVMTarget &T, StringRef DataLayoutString,
                 const Triple &TargetTriple, StringRef CPU, StringRef FS,
                 const TargetOptions &Options);
 
   /// The Target that this machine was created for.
-  const Target &TheTarget;
+  const LLVMTarget &TheTarget;
 
   /// DataLayout for the target: keep ABI type size and alignment.
   ///
@@ -122,7 +123,7 @@ public:
   void operator=(const TargetMachine &) = delete;
   virtual ~TargetMachine();
 
-  const Target &getTarget() const { return TheTarget; }
+  const LLVMTarget &getTarget() const { return TheTarget; }
 
   const Triple &getTargetTriple() const { return TargetTriple; }
   StringRef getTargetCPU() const { return TargetCPU; }
@@ -416,7 +417,7 @@ public:
 ///
 class LLVMTargetMachine : public TargetMachine {
 protected: // Can only create subclasses.
-  LLVMTargetMachine(const Target &T, StringRef DataLayoutString,
+  LLVMTargetMachine(const LLVMTarget &T, StringRef DataLayoutString,
                     const Triple &TT, StringRef CPU, StringRef FS,
                     const TargetOptions &Options, Reloc::Model RM,
                     CodeModel::Model CM, CodeGenOpt::Level OL);

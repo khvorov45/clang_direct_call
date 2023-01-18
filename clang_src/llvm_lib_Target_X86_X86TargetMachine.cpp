@@ -178,7 +178,7 @@ getEffectiveX86CodeModel(std::optional<CodeModel::Model> CM, bool JIT,
 
 /// Create an X86 target.
 ///
-X86TargetMachine::X86TargetMachine(const Target &T, const Triple &TT,
+X86TargetMachine::X86TargetMachine(const LLVMTarget &T, const Triple &TT,
                                    StringRef CPU, StringRef FS,
                                    const TargetOptions &Options,
                                    std::optional<Reloc::Model> RM,

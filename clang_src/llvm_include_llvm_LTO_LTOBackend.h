@@ -24,12 +24,13 @@
 #include "llvm_include_llvm_Target_TargetOptions.h"
 #include "llvm_include_llvm_Transforms_IPO_FunctionImport.h"
 
+struct LLVMTarget;
+
 namespace llvm {
 
 class BitcodeModule;
 class Error;
 class Module;
-class Target;
 
 namespace lto {
 

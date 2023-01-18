@@ -3274,7 +3274,7 @@ createTargetMachine(Function* F, CodeGenOpt::Level OptLevel) {
     const std::string& Triple = M->getTargetTriple();
 
     std::string         Error;
-    const llvm::Target* TheTarget = LLVMTargetRegistryTheTarget;
+    const LLVMTarget* TheTarget = LLVMTargetRegistryTheTarget;
     if (!TheTarget)
         return {};
 

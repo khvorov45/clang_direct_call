@@ -31,14 +31,14 @@ using namespace llvm;
 static TargetMachine *unwrap(LLVMTargetMachineRef P) {
   return reinterpret_cast<TargetMachine *>(P);
 }
-static Target *unwrap(LLVMTargetRef P) {
-  return reinterpret_cast<Target*>(P);
+static LLVMTarget *unwrap(LLVMTargetRef P) {
+  return reinterpret_cast<LLVMTarget*>(P);
 }
 static LLVMTargetMachineRef wrap(const TargetMachine *P) {
   return reinterpret_cast<LLVMTargetMachineRef>(const_cast<TargetMachine *>(P));
 }
-static LLVMTargetRef wrap(const Target * P) {
-  return reinterpret_cast<LLVMTargetRef>(const_cast<Target*>(P));
+static LLVMTargetRef wrap(const LLVMTarget * P) {
+  return reinterpret_cast<LLVMTargetRef>(const_cast<LLVMTarget*>(P));
 }
 
 LLVMBool LLVMGetTargetFromTriple(const char* TripleStr, LLVMTargetRef *T,
@@ -58,7 +58,7 @@ LLVMBool LLVMGetTargetFromTriple(const char* TripleStr, LLVMTargetRef *T,
 }
 
 LLVMTargetRef LLVMGetTargetMachineTarget(LLVMTargetMachineRef T) {
-  const Target* target = &(unwrap(T)->getTarget());
+  const LLVMTarget* target = &(unwrap(T)->getTarget());
   return wrap(target);
 }
 

@@ -17,7 +17,6 @@
 #include <string>
 
 namespace llvm {
-
 class AsmPrinter;
 class MCAsmBackend;
 class MCAsmInfo;
@@ -58,85 +57,75 @@ MCStreamer*       createSPIRVStreamer(MCContext& Ctx, std::unique_ptr<MCAsmBacke
 MCStreamer*       createDXContainerStreamer(MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& CE, bool RelaxAll);
 MCRelocationInfo* createMCRelocationInfo(const Triple& TT, MCContext& Ctx);
 MCSymbolizer*     createMCSymbolizer(const Triple& TT, LLVMOpInfoCallback GetOpInfo, LLVMSymbolLookupCallback SymbolLookUp, void* DisInfo, MCContext* Ctx, std::unique_ptr<MCRelocationInfo>&& RelInfo);
+}  // namespace llvm
 
-struct Target {
-    using MCAsmInfoCtorFnTy = MCAsmInfo* (*)(const MCRegisterInfo& MRI, const Triple& TT, const MCTargetOptions& Options);
-    using MCObjectFileInfoCtorFnTy = MCObjectFileInfo* (*)(MCContext& Ctx, bool PIC, bool LargeCodeModel);
-    using MCInstrInfoCtorFnTy = MCInstrInfo* (*)();
-    using MCInstrAnalysisCtorFnTy = MCInstrAnalysis* (*)(const MCInstrInfo* Info);
-    using MCRegInfoCtorFnTy = MCRegisterInfo* (*)(const Triple& TT);
-    using MCSubtargetInfoCtorFnTy = MCSubtargetInfo* (*)(const Triple& TT, StringRef CPU, StringRef Features);
-    using TargetMachineCtorTy = TargetMachine* (*)(const Target& T, const Triple& TT, StringRef CPU, StringRef Features, const TargetOptions& Options, std::optional<Reloc::Model> RM, std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL, bool JIT);
-    using AsmPrinterCtorTy = AsmPrinter* (*)(TargetMachine& TM, std::unique_ptr<MCStreamer>&& Streamer);
-    using MCAsmBackendCtorTy = MCAsmBackend* (*)(const Target& T, const MCSubtargetInfo& STI, const MCRegisterInfo& MRI, const MCTargetOptions& Options);
-    using MCAsmParserCtorTy = MCTargetAsmParser* (*)(const MCSubtargetInfo& STI, MCAsmParser& P, const MCInstrInfo& MII, const MCTargetOptions& Options);
-    using MCDisassemblerCtorTy = MCDisassembler* (*)(const Target& T, const MCSubtargetInfo& STI, MCContext& Ctx);
-    using MCInstPrinterCtorTy = MCInstPrinter* (*)(const Triple& T, unsigned SyntaxVariant, const MCAsmInfo& MAI, const MCInstrInfo& MII, const MCRegisterInfo& MRI);
-    using MCCodeEmitterCtorTy = MCCodeEmitter* (*)(const MCInstrInfo& II, MCContext& Ctx);
-    using ELFStreamerCtorTy = MCStreamer* (*)(const Triple& T, MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll);
-    using MachOStreamerCtorTy = MCStreamer* (*)(MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll, bool DWARFMustBeAtTheEnd);
-    using COFFStreamerCtorTy = MCStreamer* (*)(MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll, bool IncrementalLinkerCompatible);
-    using WasmStreamerCtorTy = MCStreamer* (*)(const Triple& T, MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll);
-    using XCOFFStreamerCtorTy = MCStreamer* (*)(const Triple& T, MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll);
-    using SPIRVStreamerCtorTy = MCStreamer* (*)(const Triple& T, MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll);
-    using DXContainerStreamerCtorTy = MCStreamer* (*)(const Triple& T, MCContext& Ctx, std::unique_ptr<MCAsmBackend>&& TAB, std::unique_ptr<MCObjectWriter>&& OW, std::unique_ptr<MCCodeEmitter>&& Emitter, bool RelaxAll);
-    using NullTargetStreamerCtorTy = MCTargetStreamer* (*)(MCStreamer& S);
-    using AsmTargetStreamerCtorTy = MCTargetStreamer* (*)(MCStreamer& S, formatted_raw_ostream& OS, MCInstPrinter* InstPrint, bool IsVerboseAsm);
-    using ObjectTargetStreamerCtorTy = MCTargetStreamer* (*)(MCStreamer& S, const MCSubtargetInfo& STI);
-    using MCRelocationInfoCtorTy = MCRelocationInfo* (*)(const Triple& TT, MCContext& Ctx);
-    using MCSymbolizerCtorTy = MCSymbolizer* (*)(const Triple& TT, LLVMOpInfoCallback GetOpInfo, LLVMSymbolLookupCallback SymbolLookUp, void* DisInfo, MCContext* Ctx, std::unique_ptr<MCRelocationInfo>&& RelInfo);
-    using CustomBehaviourCtorTy = mca::CustomBehaviour* (*)(const MCSubtargetInfo& STI, const mca::SourceMgr& SrcMgr, const MCInstrInfo& MCII);
-    using InstrPostProcessCtorTy = mca::InstrPostProcess* (*)(const MCSubtargetInfo& STI, const MCInstrInfo& MCII);
-    using InstrumentManagerCtorTy = mca::InstrumentManager* (*)(const MCSubtargetInfo& STI, const MCInstrInfo& MCII);
+struct LLVMTarget;
 
+typedef llvm::MCAsmInfo* (*LLVMTargetMCAsmInfoCtorFnTy)(const llvm::MCRegisterInfo& MRI, const llvm::Triple& TT, const llvm::MCTargetOptions& Options);
+typedef llvm::MCObjectFileInfo* (*LLVMTargetMCObjectFileInfoCtorFnTy)(llvm::MCContext& Ctx, bool PIC, bool LargeCodeModel);
+typedef llvm::MCInstrInfo* (*LLVMTargetMCInstrInfoCtorFnTy)();
+typedef llvm::MCInstrAnalysis* (*LLVMTargetMCInstrAnalysisCtorFnTy)(const llvm::MCInstrInfo* Info);
+typedef llvm::MCRegisterInfo* (*LLVMTargetMCRegInfoCtorFnTy)(const llvm::Triple& TT);
+typedef llvm::MCSubtargetInfo* (*LLVMTargetMCSubtargetInfoCtorFnTy)(const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef Features);
+typedef llvm::TargetMachine* (*LLVMTargetTargetMachineCtorTy)(const LLVMTarget& T, const llvm::Triple& TT, llvm::StringRef CPU, llvm::StringRef Features, const llvm::TargetOptions& Options, std::optional<llvm::Reloc::Model> RM, std::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT);
+typedef llvm::AsmPrinter* (*LLVMTargetAsmPrinterCtorTy)(llvm::TargetMachine& TM, std::unique_ptr<llvm::MCStreamer>&& Streamer);
+typedef llvm::MCAsmBackend* (*LLVMTargetMCAsmBackendCtorTy)(const LLVMTarget& T, const llvm::MCSubtargetInfo& STI, const llvm::MCRegisterInfo& MRI, const llvm::MCTargetOptions& Options);
+typedef llvm::MCTargetAsmParser* (*LLVMTargetMCAsmParserCtorTy)(const llvm::MCSubtargetInfo& STI, llvm::MCAsmParser& P, const llvm::MCInstrInfo& MII, const llvm::MCTargetOptions& Options);
+typedef llvm::MCDisassembler* (*LLVMTargetMCDisassemblerCtorTy)(const LLVMTarget& T, const llvm::MCSubtargetInfo& STI, llvm::MCContext& Ctx);
+typedef llvm::MCInstPrinter* (*LLVMTargetMCInstPrinterCtorTy)(const llvm::Triple& T, unsigned SyntaxVariant, const llvm::MCAsmInfo& MAI, const llvm::MCInstrInfo& MII, const llvm::MCRegisterInfo& MRI);
+typedef llvm::MCCodeEmitter* (*LLVMTargetMCCodeEmitterCtorTy)(const llvm::MCInstrInfo& II, llvm::MCContext& Ctx);
+typedef llvm::MCStreamer* (*LLVMTargetELFStreamerCtorTy)(const llvm::Triple& T, llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll);
+typedef llvm::MCStreamer* (*LLVMTargetMachOStreamerCtorTy)(llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll, bool DWARFMustBeAtTheEnd);
+typedef llvm::MCStreamer* (*LLVMTargetCOFFStreamerCtorTy)(llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll, bool IncrementalLinkerCompatible);
+typedef llvm::MCStreamer* (*LLVMTargetWasmStreamerCtorTy)(const llvm::Triple& T, llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll);
+typedef llvm::MCStreamer* (*LLVMTargetXCOFFStreamerCtorTy)(const llvm::Triple& T, llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll);
+typedef llvm::MCStreamer* (*LLVMTargetSPIRVStreamerCtorTy)(const llvm::Triple& T, llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll);
+typedef llvm::MCStreamer* (*LLVMTargetDXContainerStreamerCtorTy)(const llvm::Triple& T, llvm::MCContext& Ctx, std::unique_ptr<llvm::MCAsmBackend>&& TAB, std::unique_ptr<llvm::MCObjectWriter>&& OW, std::unique_ptr<llvm::MCCodeEmitter>&& Emitter, bool RelaxAll);
+typedef llvm::MCTargetStreamer* (*LLVMTargetNullTargetStreamerCtorTy)(llvm::MCStreamer& S);
+typedef llvm::MCTargetStreamer* (*LLVMTargetAsmTargetStreamerCtorTy)(llvm::MCStreamer& S, llvm::formatted_raw_ostream& OS, llvm::MCInstPrinter* InstPrint, bool IsVerboseAsm);
+typedef llvm::MCTargetStreamer* (*LLVMTargetObjectTargetStreamerCtorTy)(llvm::MCStreamer& S, const llvm::MCSubtargetInfo& STI);
+typedef llvm::MCRelocationInfo* (*LLVMTargetMCRelocationInfoCtorTy)(const llvm::Triple& TT, llvm::MCContext& Ctx);
+typedef llvm::MCSymbolizer* (*LLVMTargetMCSymbolizerCtorTy)(const llvm::Triple& TT, LLVMOpInfoCallback GetOpInfo, LLVMSymbolLookupCallback SymbolLookUp, void* DisInfo, llvm::MCContext* Ctx, std::unique_ptr<llvm::MCRelocationInfo>&& RelInfo);
+typedef llvm::mca::CustomBehaviour* (*LLVMTargetCustomBehaviourCtorTy)(const llvm::MCSubtargetInfo& STI, const llvm::mca::SourceMgr& SrcMgr, const llvm::MCInstrInfo& MCII);
+typedef llvm::mca::InstrPostProcess* (*LLVMTargetInstrPostProcessCtorTy)(const llvm::MCSubtargetInfo& STI, const llvm::MCInstrInfo& MCII);
+typedef llvm::mca::InstrumentManager* (*LLVMTargetInstrumentManagerCtorTy)(const llvm::MCSubtargetInfo& STI, const llvm::MCInstrInfo& MCII);
+
+struct LLVMTarget {
     const char* Name;
     const char* ShortDesc;
     const char* BackendName;
     bool        HasJIT;
 
-    MCAsmInfoCtorFnTy        MCAsmInfoCtorFn;
-    MCObjectFileInfoCtorFnTy MCObjectFileInfoCtorFn;
-    MCInstrInfoCtorFnTy      MCInstrInfoCtorFn;
-    MCInstrAnalysisCtorFnTy  MCInstrAnalysisCtorFn;
-    MCRegInfoCtorFnTy        MCRegInfoCtorFn;
-    MCSubtargetInfoCtorFnTy  MCSubtargetInfoCtorFn;
-    TargetMachineCtorTy      TargetMachineCtorFn;
-    MCAsmBackendCtorTy       MCAsmBackendCtorFn;
-    MCAsmParserCtorTy        MCAsmParserCtorFn;
-    AsmPrinterCtorTy         AsmPrinterCtorFn;
-    MCDisassemblerCtorTy     MCDisassemblerCtorFn;
-    MCInstPrinterCtorTy      MCInstPrinterCtorFn;
-    MCCodeEmitterCtorTy      MCCodeEmitterCtorFn;
-
-    COFFStreamerCtorTy         COFFStreamerCtorFn = nullptr;
-    MachOStreamerCtorTy        MachOStreamerCtorFn = nullptr;
-    ELFStreamerCtorTy          ELFStreamerCtorFn = nullptr;
-    WasmStreamerCtorTy         WasmStreamerCtorFn = nullptr;
-    XCOFFStreamerCtorTy        XCOFFStreamerCtorFn = nullptr;
-    SPIRVStreamerCtorTy        SPIRVStreamerCtorFn = nullptr;
-    DXContainerStreamerCtorTy  DXContainerStreamerCtorFn = nullptr;
-    NullTargetStreamerCtorTy   NullTargetStreamerCtorFn = nullptr;
-    AsmTargetStreamerCtorTy    AsmTargetStreamerCtorFn = nullptr;
-    ObjectTargetStreamerCtorTy ObjectTargetStreamerCtorFn = nullptr;
-    MCRelocationInfoCtorTy     MCRelocationInfoCtorFn = nullptr;
-    MCSymbolizerCtorTy         MCSymbolizerCtorFn = nullptr;
-    CustomBehaviourCtorTy      CustomBehaviourCtorFn = nullptr;
-    InstrPostProcessCtorTy     InstrPostProcessCtorFn = nullptr;
-    InstrumentManagerCtorTy    InstrumentManagerCtorFn = nullptr;
-
-    Target() = default;
-
+    LLVMTargetMCAsmInfoCtorFnTy          MCAsmInfoCtorFn;
+    LLVMTargetMCObjectFileInfoCtorFnTy   MCObjectFileInfoCtorFn;
+    LLVMTargetMCInstrInfoCtorFnTy        MCInstrInfoCtorFn;
+    LLVMTargetMCInstrAnalysisCtorFnTy    MCInstrAnalysisCtorFn;
+    LLVMTargetMCRegInfoCtorFnTy          MCRegInfoCtorFn;
+    LLVMTargetMCSubtargetInfoCtorFnTy    MCSubtargetInfoCtorFn;
+    LLVMTargetTargetMachineCtorTy        TargetMachineCtorFn;
+    LLVMTargetMCAsmBackendCtorTy         MCAsmBackendCtorFn;
+    LLVMTargetMCAsmParserCtorTy          MCAsmParserCtorFn;
+    LLVMTargetAsmPrinterCtorTy           AsmPrinterCtorFn;
+    LLVMTargetMCDisassemblerCtorTy       MCDisassemblerCtorFn;
+    LLVMTargetMCInstPrinterCtorTy        MCInstPrinterCtorFn;
+    LLVMTargetMCCodeEmitterCtorTy        MCCodeEmitterCtorFn;
+    LLVMTargetCOFFStreamerCtorTy         COFFStreamerCtorFn;
+    LLVMTargetMachOStreamerCtorTy        MachOStreamerCtorFn;
+    LLVMTargetELFStreamerCtorTy          ELFStreamerCtorFn;
+    LLVMTargetWasmStreamerCtorTy         WasmStreamerCtorFn;
+    LLVMTargetXCOFFStreamerCtorTy        XCOFFStreamerCtorFn;
+    LLVMTargetSPIRVStreamerCtorTy        SPIRVStreamerCtorFn;
+    LLVMTargetDXContainerStreamerCtorTy  DXContainerStreamerCtorFn;
+    LLVMTargetNullTargetStreamerCtorTy   NullTargetStreamerCtorFn;
+    LLVMTargetAsmTargetStreamerCtorTy    AsmTargetStreamerCtorFn;
+    LLVMTargetObjectTargetStreamerCtorTy ObjectTargetStreamerCtorFn;
+    LLVMTargetMCRelocationInfoCtorTy     MCRelocationInfoCtorFn;
+    LLVMTargetMCSymbolizerCtorTy         MCSymbolizerCtorFn;
+    LLVMTargetCustomBehaviourCtorTy      CustomBehaviourCtorFn;
+    LLVMTargetInstrPostProcessCtorTy     InstrPostProcessCtorFn;
+    LLVMTargetInstrumentManagerCtorTy    InstrumentManagerCtorFn;
 };
 
-}  // end namespace llvm
-
-extern llvm::Target* LLVMTargetRegistryTheTarget;
-
-static inline llvm::MCObjectFileInfo*
-LLVMTargetCreateMCObjectFileInfo(llvm::MCContext& Ctx) {
-    llvm::MCObjectFileInfo* MOFI = new llvm::MCObjectFileInfo();
-    MOFI->initMCObjectFileInfo(Ctx, false, false);
-    return MOFI;
-}
+extern LLVMTarget* LLVMTargetRegistryTheTarget;
 
 #endif  // LLVM_MC_TARGETREGISTRY_H

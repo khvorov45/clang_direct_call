@@ -29,8 +29,9 @@
 #include <string>
 #include <utility>
 
+struct LLVMTarget;
+
 namespace llvm {
-class Target;
 
 //
 // This is the disassembler context returned by LLVMCreateDisasm().
@@ -55,9 +56,9 @@ private:
   // LLVMDisasmInstruction().
   //
   // The LLVM target corresponding to the disassembler.
-  // FIXME: using std::unique_ptr<const llvm::Target> causes a malloc error
+  // FIXME: using std::unique_ptr<const LLVMTarget> causes a malloc error
   //        when this LLVMDisasmContext is deleted.
-  const Target *TheTarget;
+  const LLVMTarget *TheTarget;
   // The assembly information for the target architecture.
   std::unique_ptr<const llvm::MCAsmInfo> MAI;
   // The register information for the target architecture.
@@ -85,7 +86,7 @@ public:
   LLVMDisasmContext(std::string TripleName, void *DisInfo, int TagType,
                     LLVMOpInfoCallback GetOpInfo,
                     LLVMSymbolLookupCallback SymbolLookUp,
-                    const Target *TheTarget,
+                    const LLVMTarget *TheTarget,
                     std::unique_ptr<const MCAsmInfo> &&MAI,
                     std::unique_ptr<const MCRegisterInfo> &&MRI,
                     std::unique_ptr<const MCSubtargetInfo> &&MSI,
@@ -105,7 +106,7 @@ public:
   LLVMSymbolLookupCallback getSymbolLookupCallback() const {
     return SymbolLookUp;
   }
-  const Target *getTarget() const { return TheTarget; }
+  const LLVMTarget *getTarget() const { return TheTarget; }
   const MCDisassembler *getDisAsm() const { return DisAsm.get(); }
   const MCAsmInfo *getAsmInfo() const { return MAI.get(); }
   const MCInstrInfo *getInstrInfo() const { return MII.get(); }

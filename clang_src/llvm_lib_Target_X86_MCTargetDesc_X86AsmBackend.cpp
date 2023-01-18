@@ -136,7 +136,7 @@ class X86AsmBackend : public MCAsmBackend {
   bool canPadInst(const MCInst &Inst, MCObjectStreamer &OS) const;
 
 public:
-  X86AsmBackend(const Target &T, const MCSubtargetInfo &STI)
+  X86AsmBackend(const LLVMTarget &T, const MCSubtargetInfo &STI)
       : MCAsmBackend(support::little), STI(STI),
         MCII(T.MCInstrInfoCtorFn ? T.MCInstrInfoCtorFn() : 0) {
     if (X86AlignBranchWithin32BBoundaries) {
@@ -1081,13 +1081,13 @@ namespace {
 class ELFX86AsmBackend : public X86AsmBackend {
 public:
   uint8_t OSABI;
-  ELFX86AsmBackend(const Target &T, uint8_t OSABI, const MCSubtargetInfo &STI)
+  ELFX86AsmBackend(const LLVMTarget &T, uint8_t OSABI, const MCSubtargetInfo &STI)
       : X86AsmBackend(T, STI), OSABI(OSABI) {}
 };
 
 class ELFX86_32AsmBackend : public ELFX86AsmBackend {
 public:
-  ELFX86_32AsmBackend(const Target &T, uint8_t OSABI,
+  ELFX86_32AsmBackend(const LLVMTarget &T, uint8_t OSABI,
                       const MCSubtargetInfo &STI)
     : ELFX86AsmBackend(T, OSABI, STI) {}
 
@@ -1099,7 +1099,7 @@ public:
 
 class ELFX86_X32AsmBackend : public ELFX86AsmBackend {
 public:
-  ELFX86_X32AsmBackend(const Target &T, uint8_t OSABI,
+  ELFX86_X32AsmBackend(const LLVMTarget &T, uint8_t OSABI,
                        const MCSubtargetInfo &STI)
       : ELFX86AsmBackend(T, OSABI, STI) {}
 
@@ -1112,7 +1112,7 @@ public:
 
 class ELFX86_IAMCUAsmBackend : public ELFX86AsmBackend {
 public:
-  ELFX86_IAMCUAsmBackend(const Target &T, uint8_t OSABI,
+  ELFX86_IAMCUAsmBackend(const LLVMTarget &T, uint8_t OSABI,
                          const MCSubtargetInfo &STI)
       : ELFX86AsmBackend(T, OSABI, STI) {}
 
@@ -1125,7 +1125,7 @@ public:
 
 class ELFX86_64AsmBackend : public ELFX86AsmBackend {
 public:
-  ELFX86_64AsmBackend(const Target &T, uint8_t OSABI,
+  ELFX86_64AsmBackend(const LLVMTarget &T, uint8_t OSABI,
                       const MCSubtargetInfo &STI)
     : ELFX86AsmBackend(T, OSABI, STI) {}
 
@@ -1139,7 +1139,7 @@ class WindowsX86AsmBackend : public X86AsmBackend {
   bool Is64Bit;
 
 public:
-  WindowsX86AsmBackend(const Target &T, bool is64Bit,
+  WindowsX86AsmBackend(const LLVMTarget &T, bool is64Bit,
                        const MCSubtargetInfo &STI)
     : X86AsmBackend(T, STI)
     , Is64Bit(is64Bit) {
@@ -1333,7 +1333,7 @@ private:
   }
 
 public:
-  DarwinX86AsmBackend(const Target &T, const MCRegisterInfo &MRI,
+  DarwinX86AsmBackend(const LLVMTarget &T, const MCRegisterInfo &MRI,
                       const MCSubtargetInfo &STI)
       : X86AsmBackend(T, STI), MRI(MRI), TT(STI.getTargetTriple()),
         Is64Bit(TT.isArch64Bit()) {
@@ -1511,7 +1511,7 @@ public:
 
 } // end anonymous namespace
 
-MCAsmBackend *llvm::createX86_32AsmBackend(const Target &T,
+MCAsmBackend *llvm::createX86_32AsmBackend(const LLVMTarget &T,
                                            const MCSubtargetInfo &STI,
                                            const MCRegisterInfo &MRI,
                                            const MCTargetOptions &Options) {
@@ -1530,7 +1530,7 @@ MCAsmBackend *llvm::createX86_32AsmBackend(const Target &T,
   return new ELFX86_32AsmBackend(T, OSABI, STI);
 }
 
-MCAsmBackend *llvm::createX86_64AsmBackend(const Target &T,
+MCAsmBackend *llvm::createX86_64AsmBackend(const LLVMTarget &T,
                                            const MCSubtargetInfo &STI,
                                            const MCRegisterInfo &MRI,
                                            const MCTargetOptions &Options) {

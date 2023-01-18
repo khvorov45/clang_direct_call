@@ -28,7 +28,7 @@ using namespace llvm;
 // TargetMachine Class
 //
 
-TargetMachine::TargetMachine(const Target &T, StringRef DataLayoutString,
+TargetMachine::TargetMachine(const LLVMTarget &T, StringRef DataLayoutString,
                              const Triple &TT, StringRef CPU, StringRef FS,
                              const TargetOptions &Options)
     : TheTarget(T), DL(DataLayoutString), TargetTriple(TT),

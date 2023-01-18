@@ -75,7 +75,7 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
 
     std::string   Err;
     const Triple  TT(M.getTargetTriple());
-    const Target* T = LLVMTargetRegistryTheTarget;
+    const LLVMTarget* T = LLVMTargetRegistryTheTarget;
     assert(T && T->MCAsmParserCtorFn);
 
     if (T->MCRegInfoCtorFn == 0) {
@@ -103,8 +103,10 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     SourceMgr                     SrcMgr;
     SrcMgr.AddNewSourceBuffer(std::move(Buffer), SMLoc());
 
-    MCContext                         MCCtx(TT, MAI.get(), MRI.get(), STI.get(), &SrcMgr);
-    std::unique_ptr<MCObjectFileInfo> MOFI(LLVMTargetCreateMCObjectFileInfo(MCCtx));
+    MCContext               MCCtx(TT, MAI.get(), MRI.get(), STI.get(), &SrcMgr);
+    llvm::MCObjectFileInfo* MOFIPtr = new llvm::MCObjectFileInfo();
+    MOFIPtr->initMCObjectFileInfo(MCCtx, false, false);
+    std::unique_ptr<MCObjectFileInfo> MOFI(MOFIPtr);
     MOFI->setSDKVersion(M.getSDKVersion());
     MCCtx.setObjectFileInfo(MOFI.get());
     RecordStreamer Streamer(MCCtx, M);

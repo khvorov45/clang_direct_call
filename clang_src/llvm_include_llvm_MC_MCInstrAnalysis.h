@@ -28,7 +28,7 @@ class Triple;
 
 class MCInstrAnalysis {
 protected:
-  friend class Target;
+  friend struct LLVMTarget;
 
   const MCInstrInfo *Info;
 

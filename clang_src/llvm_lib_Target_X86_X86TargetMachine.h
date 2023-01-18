@@ -32,7 +32,7 @@ class X86TargetMachine final : public LLVMTargetMachine {
   bool IsJIT;
 
 public:
-  X86TargetMachine(const Target &T, const Triple &TT, StringRef CPU,
+  X86TargetMachine(const LLVMTarget &T, const Triple &TT, StringRef CPU,
                    StringRef FS, const TargetOptions &Options,
                    std::optional<Reloc::Model> RM,
                    std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL,

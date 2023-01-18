@@ -16,6 +16,8 @@
 #include <memory>
 #include <string>
 
+struct LLVMTarget;
+
 namespace llvm {
 class formatted_raw_ostream;
 class MCAsmBackend;
@@ -32,7 +34,6 @@ class MCStreamer;
 class MCSubtargetInfo;
 class MCTargetOptions;
 class MCTargetStreamer;
-class Target;
 class Triple;
 class StringRef;
 
@@ -94,11 +95,11 @@ MCSubtargetInfo *createX86MCSubtargetInfo(const Triple &TT, StringRef CPU,
 MCCodeEmitter *createX86MCCodeEmitter(const MCInstrInfo &MCII,
                                       MCContext &Ctx);
 
-MCAsmBackend *createX86_32AsmBackend(const Target &T,
+MCAsmBackend *createX86_32AsmBackend(const LLVMTarget &T,
                                      const MCSubtargetInfo &STI,
                                      const MCRegisterInfo &MRI,
                                      const MCTargetOptions &Options);
-MCAsmBackend *createX86_64AsmBackend(const Target &T,
+MCAsmBackend *createX86_64AsmBackend(const LLVMTarget &T,
                                      const MCSubtargetInfo &STI,
                                      const MCRegisterInfo &MRI,
                                      const MCTargetOptions &Options);

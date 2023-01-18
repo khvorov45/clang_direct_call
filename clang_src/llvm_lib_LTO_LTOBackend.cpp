@@ -199,7 +199,7 @@ RegisterPassPlugins(ArrayRef<std::string> PassPlugins, PassBuilder& PB) {
 }
 
 static std::unique_ptr<TargetMachine>
-createTargetMachine(const Config& Conf, const Target* TheTarget, Module& M) {
+createTargetMachine(const Config& Conf, const LLVMTarget* TheTarget, Module& M) {
     StringRef         TheTriple = M.getTargetTriple();
     SubtargetFeatures Features;
     Features.getDefaultSubtargetFeatures(Triple(TheTriple));
@@ -404,7 +404,7 @@ splitCodeGen(const Config& C, TargetMachine* TM, AddStreamFn AddStream, unsigned
         heavyweight_hardware_concurrency(ParallelCodeGenParallelismLevel)
     );
     unsigned      ThreadCount = 0;
-    const Target* T = &TM->getTarget();
+    const LLVMTarget* T = &TM->getTarget();
 
     SplitModule(
         Mod,
@@ -449,7 +449,7 @@ splitCodeGen(const Config& C, TargetMachine* TM, AddStreamFn AddStream, unsigned
     CodegenThreadPool.wait();
 }
 
-static Expected<const Target*>
+static Expected<const LLVMTarget*>
 initAndLookupTarget(const Config& C, Module& Mod) {
     if (!C.OverrideTriple.empty())
         Mod.setTargetTriple(C.OverrideTriple);
@@ -457,7 +457,7 @@ initAndLookupTarget(const Config& C, Module& Mod) {
         Mod.setTargetTriple(C.DefaultTriple);
 
     std::string   Msg;
-    const Target* T = LLVMTargetRegistryTheTarget;
+    const LLVMTarget* T = LLVMTargetRegistryTheTarget;
     if (!T)
         return make_error<StringError>(Msg, inconvertibleErrorCode());
     return T;
@@ -478,7 +478,7 @@ lto::finalizeOptimizationRemarks(
 
 Error
 lto::backend(const Config& C, AddStreamFn AddStream, unsigned ParallelCodeGenParallelismLevel, Module& Mod, ModuleSummaryIndex& CombinedIndex) {
-    Expected<const Target*> TOrErr = initAndLookupTarget(C, Mod);
+    Expected<const LLVMTarget*> TOrErr = initAndLookupTarget(C, Mod);
     if (!TOrErr)
         return TOrErr.takeError();
 
@@ -523,7 +523,7 @@ dropDeadSymbols(Module& Mod, const GVSummaryMapTy& DefinedGlobals, const ModuleS
 
 Error
 lto::thinBackend(const Config& Conf, unsigned Task, AddStreamFn AddStream, Module& Mod, const ModuleSummaryIndex& CombinedIndex, const FunctionImporter::ImportMapTy& ImportList, const GVSummaryMapTy& DefinedGlobals, MapVector<StringRef, BitcodeModule>* ModuleMap, const std::vector<uint8_t>& CmdArgs) {
-    Expected<const Target*> TOrErr = initAndLookupTarget(Conf, Mod);
+    Expected<const LLVMTarget*> TOrErr = initAndLookupTarget(Conf, Mod);
     if (!TOrErr)
         return TOrErr.takeError();
 

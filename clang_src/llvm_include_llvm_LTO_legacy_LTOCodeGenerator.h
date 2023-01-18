@@ -235,7 +235,7 @@ private:
   std::vector<std::string> CodegenOptions;
   std::string FeatureStr;
   std::string NativeObjectPath;
-  const Target *MArch = nullptr;
+  const LLVMTarget *MArch = nullptr;
   std::string TripleStr;
   lto_diagnostic_handler_t DiagHandler = nullptr;
   void *DiagContext = nullptr;

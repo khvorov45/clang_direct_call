@@ -83,7 +83,7 @@ LLVMTargetMachine::initAsmInfo() {
     AsmInfo.reset(TmpAsmInfo);
 }
 
-LLVMTargetMachine::LLVMTargetMachine(const Target& T, StringRef DataLayoutString, const Triple& TT, StringRef CPU, StringRef FS, const TargetOptions& Options, Reloc::Model RM, CodeModel::Model CM, CodeGenOpt::Level OL) :
+LLVMTargetMachine::LLVMTargetMachine(const LLVMTarget& T, StringRef DataLayoutString, const Triple& TT, StringRef CPU, StringRef FS, const TargetOptions& Options, Reloc::Model RM, CodeModel::Model CM, CodeGenOpt::Level OL) :
     TargetMachine(T, DataLayoutString, TT, CPU, FS, Options) {
     this->RM = RM;
     this->CMModel = CM;
@@ -135,7 +135,7 @@ LLVMTargetMachine::addAsmPrinter(PassManagerBase& PM, raw_pwrite_stream& Out, ra
 
 static llvm::MCStreamer*
 LLVMTargetCreateMCObjectStreamer(
-    const llvm::Target*                     Target,
+    const LLVMTarget*                     Target,
     const llvm::Triple&                     T,
     llvm::MCContext&                        Ctx,
     std::unique_ptr<llvm::MCAsmBackend>&&   TAB,
@@ -373,7 +373,7 @@ LLVMTargetMachine::addPassesToEmitMC(PassManagerBase& PM, MCContext*& Ctx, raw_p
     // emission fails.
     const MCSubtargetInfo& STI = *getMCSubtargetInfo();
     const MCRegisterInfo&  MRI = *getMCRegisterInfo();
-    const llvm::Target*    TheTarget = &getTarget();
+    const LLVMTarget*    TheTarget = &getTarget();
     if (TheTarget->MCAsmBackendCtorFn == 0 || TheTarget->MCCodeEmitterCtorFn == 0) {
         return true;
     }

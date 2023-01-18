@@ -526,7 +526,7 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     // We need an actual supported target.
     const llvm::Triple& TheTriple = Actions.Context.getTargetInfo().getTriple();
     const std::string&  TT = TheTriple.getTriple();
-    const llvm::Target* TheTarget = nullptr;
+    const LLVMTarget* TheTarget = nullptr;
     if (!TheTriple.isX86()) {
         Diag(AsmLoc, diag::err_msasm_unsupported_arch) << TheTriple.getArchName();
     } else {
@@ -583,7 +583,10 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
 
     llvm::SourceMgr                         TempSrcMgr;
     llvm::MCContext                         Ctx(TheTriple, MAI.get(), MRI.get(), STI.get(), &TempSrcMgr);
-    std::unique_ptr<llvm::MCObjectFileInfo> MOFI(LLVMTargetCreateMCObjectFileInfo(Ctx));
+    
+    llvm::MCObjectFileInfo* MOFIPtr = new llvm::MCObjectFileInfo();
+    MOFIPtr->initMCObjectFileInfo(Ctx, false, false);
+    std::unique_ptr<llvm::MCObjectFileInfo> MOFI(MOFIPtr);
     Ctx.setObjectFileInfo(MOFI.get());
 
     std::unique_ptr<llvm::MemoryBuffer> Buffer =
