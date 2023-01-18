@@ -110,15 +110,12 @@ initializeRecordStreamer(const Module& M, function_ref<void(RecordStreamer&)> In
     RecordStreamer Streamer(MCCtx, M);
     T->createNullTargetStreamer(Streamer);
 
-    std::unique_ptr<MCAsmParser> Parser(
-        createMCAsmParser(SrcMgr, MCCtx, Streamer, *MAI)
-    );
+    std::unique_ptr<MCAsmParser> Parser(createMCAsmParser(SrcMgr, MCCtx, Streamer, *MAI));
 
-    std::unique_ptr<MCTargetAsmParser> TAP(
-        T->createMCAsmParser(*STI, *Parser, *MCII, MCOptions)
-    );
-    if (!TAP)
+    if (T->MCAsmParserCtorFn == 0) {
         return;
+    }
+    std::unique_ptr<MCTargetAsmParser> TAP(T->MCAsmParserCtorFn(*STI, *Parser, *MCII, MCOptions));
 
     // Module-level inline asm is assumed to use At&t syntax (see
     // AsmPrinter::doInitialization()).

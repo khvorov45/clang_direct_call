@@ -593,19 +593,12 @@ Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     TempSrcMgr.AddNewSourceBuffer(std::move(Buffer), llvm::SMLoc());
 
     std::unique_ptr<llvm::MCStreamer>  Str(createNullStreamer(Ctx));
-    std::unique_ptr<llvm::MCAsmParser> Parser(
-        createMCAsmParser(TempSrcMgr, Ctx, *Str.get(), *MAI)
-    );
+    std::unique_ptr<llvm::MCAsmParser> Parser(createMCAsmParser(TempSrcMgr, Ctx, *Str.get(), *MAI));
 
-    std::unique_ptr<llvm::MCTargetAsmParser> TargetParser(
-        TheTarget->createMCAsmParser(*STI, *Parser, *MII, MCOptions)
-    );
-    // Target AsmParser may not be linked in clang-based tools.
-    if (!TargetParser) {
-        Diag(AsmLoc, diag::err_msasm_unable_to_create_target)
-            << "target ASM parser unavailable";
+    if (TheTarget->MCAsmParserCtorFn == 0) {
         return EmptyStmt();
     }
+    std::unique_ptr<llvm::MCTargetAsmParser> TargetParser(TheTarget->MCAsmParserCtorFn(*STI, *Parser, *MII, MCOptions));
 
     std::unique_ptr<llvm::MCInstPrinter> IP(
         TheTarget->createMCInstPrinter(llvm::Triple(TT), 1, *MAI, *MII, *MRI)

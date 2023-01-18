@@ -126,13 +126,6 @@ struct Target {
 
     Target() = default;
 
-    MCTargetAsmParser*
-    createMCAsmParser(const MCSubtargetInfo& STI, MCAsmParser& Parser, const MCInstrInfo& MII, const MCTargetOptions& Options) const {
-        if (!MCAsmParserCtorFn)
-            return nullptr;
-        return MCAsmParserCtorFn(STI, Parser, MII, Options);
-    }
-
     AsmPrinter*
     createAsmPrinter(TargetMachine& TM, std::unique_ptr<MCStreamer>&& Streamer) const {
         if (!AsmPrinterCtorFn)
